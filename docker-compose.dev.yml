@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  # MongoDB for local development
+  mongodb:
+    image: mongo:7-jammy
+    container_name: epitrello-mongodb-dev
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE}
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - epitrello-network
+
+  # Backend GraphQL API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: epitrello-backend-dev
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT}:4000"
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      PORT: 4000
+      MONGODB_URI: ${MONGODB_URI}
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      - mongodb
+    networks:
+      - epitrello-network
+
+  # Frontend Next.js
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: epitrello-frontend-dev
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT}:3000"
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      NEXT_PUBLIC_GRAPHQL_API: ${NEXT_PUBLIC_GRAPHQL_API}
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - backend
+    networks:
+      - epitrello-network
+
+volumes:
+  mongodb_data:
+
+networks:
+  epitrello-network:
+    driver: bridge
