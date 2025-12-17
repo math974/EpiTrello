@@ -5,14 +5,15 @@ WORKDIR /app
 # Copy dependency files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install dependencies (dev included) and build
+RUN npm ci
 
 # Copy the rest of the code
 COPY . .
 
 # Build Next.js application
 RUN npm run build
+RUN npm prune --production
 
 # Production image
 FROM node:20-alpine AS runner
@@ -29,6 +30,8 @@ RUN adduser --system --uid 1001 nextjs
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
 
 # Use non-root user
 USER nextjs
