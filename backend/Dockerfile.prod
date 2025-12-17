@@ -5,14 +5,10 @@ WORKDIR /app
 # Copy dependency files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
-
-# Copy the rest of the code
+# Install dependencies (including dev for build) and build
+RUN npm ci
 COPY . .
-
-# If using TypeScript, uncomment the following line
-# RUN npm run build
+RUN npm run build && npm prune --production
 
 # Production image
 FROM node:20-alpine AS runner
@@ -25,12 +21,10 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nodeuser
 
-# Copy node_modules and code from builder
+# Copy node_modules and built app
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
-# If using TypeScript, copy dist folder instead of src
-COPY --from=builder /app/src ./src
-# COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/dist ./dist
 
 # Use non-root user
 USER nodeuser

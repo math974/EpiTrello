@@ -56,7 +56,7 @@ EpiTrello/
 - MongoDB Atlas account (for production)
 - Google Cloud account (for deployment)
 
-### Development with Docker
+### Development with Docker (use the helper script)
 
 1. **Clone the project**
    ```bash
@@ -64,14 +64,17 @@ EpiTrello/
    cd EpiTrello
    ```
 
-2. **Start the development environment**
+2. **Clean and start dev stack (recommended)**
    ```bash
-   docker-compose -f docker-compose.dev.yml --env-file .env.dev up --build
+   ./scripts/clean_rebuild.sh
    ```
-   
-   > A `.env.dev` file with default values is already included for quick start.
+   This script:
+   - uses `--env-file .env` with docker compose
+   - performs a down + project resource cleanup
+   - rebuilds without cache
+   - runs `docker compose up --build`
 
-3. **Access the services**
+3. **Accès aux services**
    - Frontend: http://localhost:3000
    - Backend GraphQL: http://localhost:4000/graphql
    - MongoDB: localhost:27017
