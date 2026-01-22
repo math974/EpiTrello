@@ -10,27 +10,17 @@ labels = {
   app         = "epitrello"
 }
 
-# Plain env vars (non-secret)
-plain_env_backend = {
-  NODE_ENV = "production"
-}
+plain_env_backend   = {}
+plain_env_frontend  = {}
 
-plain_env_frontend = {
-  NEXT_PUBLIC_GRAPHQL_API = "https://backend-dev.example.com/graphql"
-}
+node_env     = "production"
+backend_port = 4000
+frontend_port = 3000
+cors_origin  = "http://localhost:3000"
+jwt_secret   = "change-me-dev"
 
-# Secrets to create (secret_id => value)
-env_secrets = {
-  MONGODB_URI = "mongodb+srv://user:password@cluster-dev.mongodb.net/epitrello?retryWrites=true&w=majority"
-  JWT_SECRET  = "change-me-dev"
-}
-
-# Mapping env var -> secret id
-secret_env_backend = {
-  MONGODB_URI = "MONGODB_URI"
-  JWT_SECRET  = "JWT_SECRET"
-}
-
-secret_env_frontend = {
-  BACKEND_URL = "MONGODB_URI" # example placeholder; adjust/remove as needed
-}
+plain_env_backend  = {}
+plain_env_frontend = {}
+env_secrets        = {}
+secret_env_backend = {}
+secret_env_frontend = {}

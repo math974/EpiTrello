@@ -9,6 +9,10 @@ terraform {
       source  = "hashicorp/google-beta"
       version = ">= 5.0, < 8.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = ">= 3.5.0, < 4.0.0"
+    }
   }
 
   backend "gcs" {}
@@ -37,6 +41,12 @@ resource "google_service_account" "frontend" {
 resource "google_project_iam_member" "backend_run_admin" {
   project = var.project_id
   role    = "roles/run.admin"
+  member  = "serviceAccount:${google_service_account.backend.email}"
+}
+
+resource "google_project_iam_member" "backend_cloudsql_client" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
   member  = "serviceAccount:${google_service_account.backend.email}"
 }
 
@@ -73,11 +83,90 @@ resource "google_artifact_registry_repository" "docker_repo" {
 }
 
 # -----------------------------------------------------------------------------
+# Secrets + generated values (Cloud SQL)
+# -----------------------------------------------------------------------------
+
+resource "random_password" "postgres" {
+  length  = 24
+  special = true
+}
+
+locals {
+  postgres_password_value = (
+    var.postgres_password != null && var.postgres_password != ""
+    ? var.postgres_password
+    : random_password.postgres.result
+  )
+}
+
+# -----------------------------------------------------------------------------
+# Cloud SQL (Postgres) - protected from deletion
+# -----------------------------------------------------------------------------
+
+resource "google_sql_database_instance" "postgres" {
+  name             = var.postgres_instance_name
+  project          = var.project_id
+  region           = var.region
+  database_version = var.postgres_version
+  deletion_protection = true
+
+  settings {
+    tier              = var.postgres_tier
+    disk_size         = var.postgres_disk_size_gb
+    disk_autoresize   = true
+    disk_autoresize_limit = 0
+    availability_type = var.postgres_availability_type
+    user_labels       = var.labels
+
+    ip_configuration {
+      ipv4_enabled = true
+    }
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "google_sql_database" "app" {
+  name     = var.postgres_db_name
+  project  = var.project_id
+  instance = google_sql_database_instance.postgres.name
+}
+
+resource "google_sql_user" "app" {
+  name     = var.postgres_user
+  project  = var.project_id
+  instance = google_sql_database_instance.postgres.name
+  password = local.postgres_password_value
+}
+
+# Build the Cloud SQL socket connection string for Cloud Run
+locals {
+  database_url = "postgresql://${var.postgres_user}:${local.postgres_password_value}@/${var.postgres_db_name}?host=/cloudsql/${google_sql_database_instance.postgres.connection_name}"
+}
+
+# -----------------------------------------------------------------------------
+# Secrets (env vars)
+# -----------------------------------------------------------------------------
+
+locals {
+  env_secrets_all = merge(
+    var.env_secrets,
+    {
+      JWT_SECRET       = var.jwt_secret
+      DATABASE_URL     = local.database_url
+      POSTGRES_PASSWORD = local.postgres_password_value
+    }
+  )
+}
+
+# -----------------------------------------------------------------------------
 # Secrets (env vars)
 # -----------------------------------------------------------------------------
 
 resource "google_secret_manager_secret" "env" {
-  for_each = var.env_secrets
+  for_each = local.env_secrets_all
 
   project   = var.project_id
   secret_id = each.key
@@ -88,15 +177,49 @@ resource "google_secret_manager_secret" "env" {
   labels = var.labels
 }
 
+resource "google_secret_manager_secret" "backend_url" {
+  project   = var.project_id
+  secret_id = "BACKEND_URL"
+
+  replication {
+    auto {}
+  }
+  labels = var.labels
+}
+
+resource "google_secret_manager_secret_version" "backend_url_version" {
+  secret      = google_secret_manager_secret.backend_url.id
+  secret_data = module.cloud_run_backend.url
+
+  depends_on = [module.cloud_run_backend]
+}
+
+resource "google_secret_manager_secret_iam_member" "backend_url_access_frontend" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.backend_url.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.frontend.email}"
+}
+
+locals {
+  env_secret_ids = merge(
+    { for k, v in google_secret_manager_secret.env : k => v.secret_id },
+    { BACKEND_URL = google_secret_manager_secret.backend_url.secret_id }
+  )
+}
+
 resource "google_secret_manager_secret_version" "env_value" {
-  for_each = var.env_secrets
+  for_each = local.env_secrets_all
 
   secret      = google_secret_manager_secret.env[each.key].id
   secret_data = each.value
 }
 
 resource "google_secret_manager_secret_iam_member" "backend_secret_access" {
-  for_each = google_secret_manager_secret.env
+  for_each = {
+    for k, v in google_secret_manager_secret.env :
+    k => v if contains(keys(local.secret_env_backend_all), k)
+  }
 
   project   = var.project_id
   secret_id = each.value.secret_id
@@ -105,7 +228,10 @@ resource "google_secret_manager_secret_iam_member" "backend_secret_access" {
 }
 
 resource "google_secret_manager_secret_iam_member" "frontend_secret_access" {
-  for_each = google_secret_manager_secret.env
+  for_each = {
+    for k, v in google_secret_manager_secret.env :
+    k => v if contains(keys(local.secret_env_frontend_all), k)
+  }
 
   project   = var.project_id
   secret_id = each.value.secret_id
@@ -116,6 +242,40 @@ resource "google_secret_manager_secret_iam_member" "frontend_secret_access" {
 # -----------------------------------------------------------------------------
 # Cloud Run (backend)
 # -----------------------------------------------------------------------------
+
+locals {
+  plain_env_backend_all = merge(
+    {
+      NODE_ENV               = var.node_env
+      PORT                   = tostring(var.backend_port)
+      CORS_ORIGIN            = var.cors_origin
+      CLOUDSQL_INSTANCES     = google_sql_database_instance.postgres.connection_name
+    },
+    var.plain_env_backend
+  )
+
+  plain_env_frontend_all = merge(
+    {
+      NODE_ENV = var.node_env
+    },
+    var.plain_env_frontend
+  )
+
+  secret_env_backend_all = merge(
+    {
+      DATABASE_URL = "DATABASE_URL"
+      JWT_SECRET   = "JWT_SECRET"
+    },
+    var.secret_env_backend
+  )
+
+  secret_env_frontend_all = merge(
+    {
+      NEXT_PUBLIC_GRAPHQL_API = "BACKEND_URL"
+    },
+    var.secret_env_frontend
+  )
+}
 
 module "cloud_run_backend" {
   source = "./modules/cloud-run"
@@ -128,8 +288,8 @@ module "cloud_run_backend" {
   labels                = var.labels
   public                = true
 
-  plain_env  = var.plain_env_backend
-  secret_env = { for k, v in var.secret_env_backend : k => google_secret_manager_secret.env[v].secret_id }
+  plain_env  = local.plain_env_backend_all
+  secret_env = { for k, v in local.secret_env_backend_all : k => google_secret_manager_secret.env[v].secret_id }
 }
 
 module "cloud_run_frontend" {
@@ -143,8 +303,8 @@ module "cloud_run_frontend" {
   labels                = var.labels
   public                = true
 
-  plain_env  = var.plain_env_frontend
-  secret_env = { for k, v in var.secret_env_frontend : k => google_secret_manager_secret.env[v].secret_id }
+  plain_env  = local.plain_env_frontend_all
+  secret_env = { for k, v in local.secret_env_frontend_all : k => local.env_secret_ids[v] }
 }
 
 # -----------------------------------------------------------------------------

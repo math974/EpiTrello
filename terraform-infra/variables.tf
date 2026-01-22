@@ -61,3 +61,81 @@ variable "secret_env_frontend" {
   type        = map(string)
   default     = {}
 }
+
+variable "node_env" {
+  description = "NODE_ENV value for Cloud Run services"
+  type        = string
+  default     = "production"
+}
+
+variable "backend_port" {
+  description = "Backend port for Cloud Run"
+  type        = number
+  default     = 4000
+}
+
+variable "frontend_port" {
+  description = "Frontend port for Cloud Run"
+  type        = number
+  default     = 3000
+}
+
+variable "cors_origin" {
+  description = "CORS origin allowed by backend"
+  type        = string
+}
+
+variable "jwt_secret" {
+  description = "JWT secret for backend (stored in Secret Manager)"
+  type        = string
+  sensitive   = true
+}
+
+variable "postgres_instance_name" {
+  description = "Cloud SQL Postgres instance name"
+  type        = string
+  default     = "epitrello-postgres"
+}
+
+variable "postgres_version" {
+  description = "Cloud SQL Postgres version"
+  type        = string
+  default     = "POSTGRES_15"
+}
+
+variable "postgres_tier" {
+  description = "Cloud SQL machine tier"
+  type        = string
+  default     = "db-f1-micro"
+}
+
+variable "postgres_disk_size_gb" {
+  description = "Cloud SQL disk size (GB)"
+  type        = number
+  default     = 20
+}
+
+variable "postgres_availability_type" {
+  description = "Cloud SQL availability type (ZONAL or REGIONAL)"
+  type        = string
+  default     = "ZONAL"
+}
+
+variable "postgres_db_name" {
+  description = "Default database name"
+  type        = string
+  default     = "epitrello"
+}
+
+variable "postgres_user" {
+  description = "Database user"
+  type        = string
+  default     = "epitrello"
+}
+
+variable "postgres_password" {
+  description = "Database user password"
+  type        = string
+  sensitive   = true
+  default     = null
+}

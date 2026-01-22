@@ -7,7 +7,6 @@ const httpLink = new HttpLink({
 export const apolloClient = new ApolloClient({
   link: httpLink,
   cache: new InMemoryCache(),
-  // Désactive la connexion automatique aux DevTools Apollo (certains vieux DevTools injectent encore l’option canonizeResults supprimée en 3.14).
-  connectToDevTools: false,
+  devtools: { enabled: false },
 });
 

@@ -1,27 +1,26 @@
 version: '3.8'
 
 services:
-  # MongoDB for local development
-  mongodb:
-    image: mongo:7-jammy
-    container_name: epitrello-mongodb-dev
+  postgres:
+    image: postgres:16-alpine
+    container_name: epitrello-postgres-dev
     restart: unless-stopped
-    ports:
-      - "27017:27017"
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
-      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
     volumes:
-      - mongodb_data:/data/db
+      - pgdata:/var/lib/postgresql/data
     networks:
       - epitrello-network
 
-  # Backend GraphQL API
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
+      target: dev
     container_name: epitrello-backend-dev
     restart: unless-stopped
     ports:
@@ -29,18 +28,19 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV}
       PORT: 4000
-      MONGODB_URI: ${MONGODB_URI}
+      DATABASE_URL: ${DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET}
       CORS_ORIGIN: ${CORS_ORIGIN}
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
     volumes:
       - ./backend:/app
       - /app/node_modules
     depends_on:
-      - mongodb
+      - postgres
     networks:
       - epitrello-network
 
-  # Frontend Next.js
   frontend:
     build:
       context: ./frontend
@@ -52,6 +52,8 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV}
       NEXT_PUBLIC_GRAPHQL_API: ${NEXT_PUBLIC_GRAPHQL_API}
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
     volumes:
       - ./frontend:/app
       - /app/node_modules
@@ -61,8 +63,44 @@ services:
     networks:
       - epitrello-network
 
+  pgadmin:
+    image: dpage/pgadmin4:8
+    container_name: epitrello-pgadmin-dev
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+      PGADMIN_SERVER_JSON_FILE: /var/lib/pgadmin/servers.json
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - epitrello-network
+    volumes:
+      - ./configs/pgadmin/entrypoint.sh:/pgadmin-entrypoint.sh:ro
+      - pgadmin_data:/var/lib/pgadmin
+    entrypoint: ["/bin/sh", "/pgadmin-entrypoint.sh"]
+
+  docs:
+    build:
+      context: .
+      dockerfile: configs/Dockerfile.docs
+    container_name: epitrello-docs-dev
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "4400:4400"
+    networks:
+      - epitrello-network
+
 volumes:
-  mongodb_data:
+  pgdata:
+  pgadmin_data:
 
 networks:
   epitrello-network:

@@ -1,3 +1,7 @@
+locals {
+  cloudsql_instances = lookup(var.plain_env, "CLOUDSQL_INSTANCES", "")
+}
+
 resource "google_cloud_run_service" "this" {
   name     = var.service_name
   location = var.region
@@ -34,9 +38,14 @@ resource "google_cloud_run_service" "this" {
     }
 
     metadata {
-      annotations = {
-        "run.googleapis.com/client-name" = "terraform"
-      }
+      annotations = merge(
+        {
+          "run.googleapis.com/client-name" = "terraform"
+        },
+        local.cloudsql_instances != ""
+        ? { "run.googleapis.com/cloudsql-instances" = local.cloudsql_instances }
+        : {}
+      )
       labels = var.labels
     }
   }
