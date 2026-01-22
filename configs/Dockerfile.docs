@@ -1,0 +1,12 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# SpectaQL generates static docs; serve them with a lightweight HTTP server.
+RUN npm install -g spectaql serve
+
+COPY configs/spectaql.yml ./config.yml
+
+EXPOSE 4400
+
+CMD ["sh", "-c", "spectaql config.yml && serve -s public -l 4400"]

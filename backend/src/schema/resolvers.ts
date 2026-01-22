@@ -1,5 +1,4 @@
-import { Board } from '../models/Board.js';
-import { User } from '../models/User.js';
+import { prisma } from '../prisma.js';
 
 type IdArgs = { id: string };
 type CreateUserArgs = { username: string; email: string; avatar?: string | null };
@@ -20,58 +19,66 @@ type UpdateBoardArgs = {
 export const resolvers = {
   Query: {
     users: async () => {
-      return User.find();
+      return prisma.user.findMany();
     },
     user: async (_: unknown, { id }: IdArgs) => {
-      return User.findById(id);
+      return prisma.user.findUnique({ where: { id } });
     },
     boards: async () => {
-      return Board.find().populate('owner');
+      return prisma.board.findMany({ include: { owner: true } });
     },
     board: async (_: unknown, { id }: IdArgs) => {
-      return Board.findById(id).populate('owner');
+      return prisma.board.findUnique({ where: { id }, include: { owner: true } });
     },
   },
 
   Mutation: {
     createUser: async (_: unknown, { username, email, avatar }: CreateUserArgs) => {
-      const user = new User({ username, email, avatar });
-      return user.save();
+      return prisma.user.create({
+        data: { username, email, avatar: avatar ?? null },
+      });
     },
     updateUser: async (_: unknown, { id, username, email, avatar }: UpdateUserArgs) => {
-      const updateData: Partial<UpdateUserArgs> = {};
-      if (username !== undefined) updateData.username = username;
-      if (email !== undefined) updateData.email = email;
-      if (avatar !== undefined) updateData.avatar = avatar;
-
-      return User.findByIdAndUpdate(id, updateData, { new: true });
+      return prisma.user.update({
+        where: { id },
+        data: {
+          ...(username !== undefined ? { username } : {}),
+          ...(email !== undefined ? { email } : {}),
+          ...(avatar !== undefined ? { avatar } : {}),
+        },
+      });
     },
     deleteUser: async (_: unknown, { id }: IdArgs) => {
-      const result = await User.findByIdAndDelete(id);
-      return Boolean(result);
+      await prisma.board.deleteMany({ where: { ownerId: id } });
+      await prisma.user.delete({ where: { id } });
+      return true;
     },
 
     createBoard: async (_: unknown, { title, description, background, ownerId }: CreateBoardArgs) => {
-      const board = new Board({
-        title,
-        description: description ?? '',
-        background: background ?? '#0079bf',
-        owner: ownerId,
+      return prisma.board.create({
+        data: {
+          title,
+          description: description ?? null,
+          background: background ?? '#0079bf',
+          ownerId,
+        },
+        include: { owner: true },
       });
-      const savedBoard = await board.save();
-      return Board.findById(savedBoard._id).populate('owner');
     },
     updateBoard: async (_: unknown, { id, title, description, background }: UpdateBoardArgs) => {
-      const updateData: Partial<UpdateBoardArgs> = {};
-      if (title !== undefined) updateData.title = title;
-      if (description !== undefined) updateData.description = description;
-      if (background !== undefined) updateData.background = background;
-
-      return Board.findByIdAndUpdate(id, updateData, { new: true }).populate('owner');
+      return prisma.board.update({
+        where: { id },
+        data: {
+          ...(title !== undefined ? { title } : {}),
+          ...(description !== undefined ? { description } : {}),
+          ...(background !== undefined ? { background } : {}),
+        },
+        include: { owner: true },
+      });
     },
     deleteBoard: async (_: unknown, { id }: IdArgs) => {
-      const result = await Board.findByIdAndDelete(id);
-      return Boolean(result);
+      await prisma.board.delete({ where: { id } });
+      return true;
     },
   },
 
@@ -79,11 +86,10 @@ export const resolvers = {
     owner: async (parent: { owner: unknown }) => {
       if (parent && typeof parent === 'object' && 'owner' in parent) {
         const typedParent = parent as { owner: string | { username?: string } };
-        // If already populated
         if (typeof typedParent.owner === 'object' && typedParent.owner && 'username' in typedParent.owner) {
           return typedParent.owner;
         }
-        return User.findById(typedParent.owner as string);
+        return prisma.user.findUnique({ where: { id: typedParent.owner as string } });
       }
       return null;
     },

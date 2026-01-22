@@ -1,11 +1,23 @@
 version: '3.8'
 
 services:
-  # Backend GraphQL API
+  postgres:
+    image: postgres:16-alpine
+    container_name: epitrello-postgres-prod
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - epitrello-network
+
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile.prod
+      dockerfile: Dockerfile
     container_name: epitrello-backend-prod
     restart: always
     ports:
@@ -13,11 +25,13 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV}
       PORT: 4000
-      MONGODB_URI: ${MONGODB_URI}
+      DATABASE_URL: ${DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET}
       CORS_ORIGIN: ${CORS_ORIGIN}
     networks:
       - epitrello-network
+    depends_on:
+      - postgres
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:4000/health"]
       interval: 30s
@@ -25,7 +39,6 @@ services:
       retries: 3
       start_period: 40s
 
-  # Frontend Next.js
   frontend:
     build:
       context: ./frontend
@@ -47,6 +60,36 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  pgadmin:
+    image: dpage/pgadmin4:8
+    container_name: epitrello-pgadmin-prod
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - epitrello-network
+
+  docs:
+    build:
+      context: .
+      dockerfile: configs/Dockerfile.docs
+    container_name: epitrello-docs-prod
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "4400:4400"
+    networks:
+      - epitrello-network
+
+volumes:
+  pgdata:
 
 networks:
   epitrello-network:

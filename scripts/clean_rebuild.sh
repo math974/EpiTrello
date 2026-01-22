@@ -3,14 +3,57 @@ set -euo pipefail
 
 # Clean Docker resources for the EpiTrello project and rebuild services.
 # Usage:
-#   ./scripts/clean_rebuild.sh
+#   ./scripts/clean_rebuild.sh [--prod] [--help]
 #
-# Requirement: run from the repository root (where docker-compose.dev.yml lives).
+# Defaults:
+#   compose: docker-compose.dev.yml
+#   env file: .env.dev
+#
+# With --prod:
+#   compose: docker-compose.prod.yml
+#   env file: .env.prod
+#
+# Requirement: run from the repository root (where docker-compose.*.yml lives).
 
 COMPOSE_FILE="docker-compose.dev.yml"
 PROJECT_PREFIX="epitrello"
-ENV_FILE=".env"
-ENV_FILES=(".env" ".env.example")
+ENV_FILE=".env.dev"
+ENV_FILES=(".env.dev" ".env.dev.example")
+
+show_help() {
+  cat <<EOF
+Usage: $0 [--prod] [--help]
+
+Options:
+  --prod   Use docker-compose.prod.yml with .env.prod
+  --help   Show this help
+
+Default behavior uses docker-compose.dev.yml and .env.dev.
+The script:
+  - stops/removes containers, volumes, networks with prefix '${PROJECT_PREFIX}'
+  - rebuilds images without cache
+  - starts with docker compose up --build
+EOF
+}
+
+if [[ $# -gt 0 ]]; then
+  case "$1" in
+    --prod)
+      COMPOSE_FILE="docker-compose.prod.yml"
+      ENV_FILE=".env.prod"
+      ENV_FILES=(".env.prod" ".env.prod.example")
+      ;;
+    --help|-h)
+      show_help
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      show_help
+      exit 1
+      ;;
+  esac
+fi
 
 if [[ ! -f "${COMPOSE_FILE}" ]]; then
   echo "Error: ${COMPOSE_FILE} not found. Run this script from the project root." >&2

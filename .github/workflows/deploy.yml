@@ -1,0 +1,247 @@
+#name: Deploy to Staging/Production (Unified)
+#
+#on:
+#  push:
+#  pull_request:
+#  workflow_dispatch:
+#
+#concurrency:
+#  group: terraform
+#  cancel-in-progress: false
+#
+#permissions:
+#  contents: write
+#  id-token: write
+#  packages: write
+#  pull-requests: write
+#
+#env:
+#  TF_IN_AUTOMATION: true
+#  TF_INPUT: false
+#  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+#  GKE_CLUSTER: ${{ secrets.GKE_CLUSTER_NAME }}
+#  GKE_ZONE: ${{ secrets.GKE_ZONE }}
+#  GCP_REGION: ${{ secrets.GCP_REGION }}
+#  IMAGE_NAME: tasks-app
+#  DEPLOY_ENV: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+#  ARTIFACT_REPO: epitrello-docker
+#
+#jobs:
+#  # ===== PHASE 0: BUILD & PUSH IMAGES =====
+#  build-and-push:
+#    name: Build and Push Images
+#    runs-on: ubuntu-latest
+#    environment:
+#      name: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+#    steps:
+#      - name: Checkout
+#        uses: actions/checkout@v4
+#
+#      - name: Auth to Google Cloud (WIF)
+#        uses: google-github-actions/auth@v2
+#        with:
+#          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+#          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+#
+#      - name: Configure Docker for Artifact Registry
+#        run: gcloud auth configure-docker ${GCP_REGION}-docker.pkg.dev
+#
+#      - name: Set image tag
+#        id: tag
+#        run: |
+#          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+#            echo "TAG=prod" >> $GITHUB_OUTPUT
+#          else
+#            echo "TAG=dev" >> $GITHUB_OUTPUT
+#          fi
+#
+#      - name: Build and push backend image
+#        run: |
+#          docker build -t ${GCP_REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPO}/backend:${{ steps.tag.outputs.TAG }} ./backend
+#          docker push ${GCP_REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPO}/backend:${{ steps.tag.outputs.TAG }}
+#
+#      - name: Build and push frontend image
+#        run: |
+#          docker build -t ${GCP_REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPO}/frontend:${{ steps.tag.outputs.TAG }} ./frontend
+#          docker push ${GCP_REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPO}/frontend:${{ steps.tag.outputs.TAG }}
+#
+#  # ===== PHASE 1: TERRAFORM =====
+#  terraform-fmt-validate:
+#    name: Terraform Format & Validate
+#    runs-on: ubuntu-latest
+#    environment:
+#      name: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+#    steps:
+#      - name: Checkout
+#        uses: actions/checkout@v4
+#
+#      - name: Auth to Google Cloud (WIF)
+#        uses: google-github-actions/auth@v2
+#        with:
+#          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+#          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+#
+#      - name: Setup Terraform
+#        uses: hashicorp/setup-terraform@v3
+#        with:
+#          terraform_version: 1.8.5
+#          terraform_wrapper: true
+#
+#      - name: Cache Terraform plugins
+#        uses: actions/cache@v4
+#        with:
+#          path: |
+#            ~/.terraform.d/plugin-cache
+#            ./.terraform
+#          key: ${{ runner.os }}-terraform-${{ hashFiles('**/.terraform.lock.hcl') }}
+#          restore-keys: |
+#            ${{ runner.os }}-terraform-
+#
+#      - name: Set env-specific paths
+#        id: paths
+#        run: |
+#          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+#            echo "ENV=prod" >> $GITHUB_OUTPUT
+#            echo "BACKEND_CONFIG=configs/infra-prod.config" >> $GITHUB_OUTPUT
+#            echo "TFVARS=envs/prod.tfvars" >> $GITHUB_OUTPUT
+#          else
+#            echo "ENV=dev" >> $GITHUB_OUTPUT
+#            echo "BACKEND_CONFIG=configs/infra-stage.config" >> $GITHUB_OUTPUT
+#            echo "TFVARS=envs/stage.tfvars" >> $GITHUB_OUTPUT
+#          fi
+#
+#      - name: Terraform Init (backend ${{ steps.paths.outputs.ENV }})
+#        run: |
+#          cd terraform-infra
+#          terraform init \
+#            -backend-config=../${{ steps.paths.outputs.BACKEND_CONFIG }}
+#
+#      - name: Terraform Format Check
+#        run: |
+#          cd terraform-infra
+#          terraform fmt -check -recursive
+#
+#      - name: Terraform Validate
+#        run: |
+#          cd terraform-infra
+#          terraform validate
+#
+#  terraform-plan:
+#    name: Terraform Plan
+#    runs-on: ubuntu-latest
+#    needs: [build-and-push, terraform-fmt-validate]
+#    if: github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+#    environment:
+#      name: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+#    steps:
+#      - name: Checkout
+#        uses: actions/checkout@v4
+#
+#      - name: Auth to Google Cloud (WIF)
+#        uses: google-github-actions/auth@v2
+#        with:
+#          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+#          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+#
+#      - name: Setup Terraform
+#        uses: hashicorp/setup-terraform@v3
+#        with:
+#          terraform_version: 1.8.5
+#          terraform_wrapper: true
+#
+#      - name: Cache Terraform plugins
+#        uses: actions/cache@v4
+#        with:
+#          path: |
+#            ~/.terraform.d/plugin-cache
+#            ./.terraform
+#          key: ${{ runner.os }}-terraform-${{ hashFiles('**/.terraform.lock.hcl') }}
+#          restore-keys: |
+#            ${{ runner.os }}-terraform-
+#
+#      - name: Set env-specific paths
+#        id: paths
+#        run: |
+#          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+#            echo "ENV=prod" >> $GITHUB_OUTPUT
+#            echo "BACKEND_CONFIG=configs/infra-prod.config" >> $GITHUB_OUTPUT
+#            echo "TFVARS=envs/prod.tfvars" >> $GITHUB_OUTPUT
+#          else
+#            echo "ENV=dev" >> $GITHUB_OUTPUT
+#            echo "BACKEND_CONFIG=configs/infra-stage.config" >> $GITHUB_OUTPUT
+#            echo "TFVARS=envs/stage.tfvars" >> $GITHUB_OUTPUT
+#          fi
+#
+#      - name: Terraform Init (backend ${{ steps.paths.outputs.ENV }})
+#        run: |
+#          cd terraform-infra
+#          terraform init \
+#            -backend-config=../${{ steps.paths.outputs.BACKEND_CONFIG }}
+#
+#      - name: Terraform Plan (env ${{ steps.paths.outputs.ENV }})
+#        run: |
+#          cd terraform-infra
+#          terraform plan \
+#            -var-file=${{ steps.paths.outputs.TFVARS }} \
+#            -input=false
+#
+#  terraform-apply:
+#    name: Terraform Apply
+#    runs-on: ubuntu-latest
+#    needs: [build-and-push, terraform-plan]
+#    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+#    environment:
+#      name: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
+#    steps:
+#      - name: Checkout
+#        uses: actions/checkout@v4
+#
+#      - name: Auth to Google Cloud (WIF)
+#        uses: google-github-actions/auth@v2
+#        with:
+#          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+#          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+#
+#      - name: Setup Terraform
+#        uses: hashicorp/setup-terraform@v3
+#        with:
+#          terraform_version: 1.8.5
+#          terraform_wrapper: true
+#
+#      - name: Cache Terraform plugins
+#        uses: actions/cache@v4
+#        with:
+#          path: |
+#            ~/.terraform.d/plugin-cache
+#            ./.terraform
+#          key: ${{ runner.os }}-terraform-${{ hashFiles('**/.terraform.lock.hcl') }}
+#          restore-keys: |
+#            ${{ runner.os }}-terraform-
+#
+#      - name: Set env-specific paths
+#        id: paths
+#        run: |
+#          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+#            echo "ENV=prod" >> $GITHUB_OUTPUT
+#            echo "BACKEND_CONFIG=configs/infra-prod.config" >> $GITHUB_OUTPUT
+#            echo "TFVARS=envs/prod.tfvars" >> $GITHUB_OUTPUT
+#          else
+#            echo "ENV=dev" >> $GITHUB_OUTPUT
+#            echo "BACKEND_CONFIG=configs/infra-stage.config" >> $GITHUB_OUTPUT
+#            echo "TFVARS=envs/stage.tfvars" >> $GITHUB_OUTPUT
+#          fi
+#
+#      - name: Terraform Init (backend ${{ steps.paths.outputs.ENV }})
+#        run: |
+#          cd terraform-infra
+#          terraform init \
+#            -backend-config=../${{ steps.paths.outputs.BACKEND_CONFIG }}
+#
+#      - name: Terraform Apply (env ${{ steps.paths.outputs.ENV }})
+#        run: |
+#          cd terraform-infra
+#          terraform apply \
+#            -auto-approve \
+#            -var-file=${{ steps.paths.outputs.TFVARS }} \
+#            -input=false
+#

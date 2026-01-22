@@ -1,299 +1,163 @@
 # EpiTrello
 
-A modern Trello clone built with Next.js, GraphQL, and MongoDB Atlas.
+A modern Trello clone with a GraphQL API, a Next.js frontend, and a Postgres database.
 
-## 🏗️ Architecture
+## Prerequisites
 
-```
-                +----------------------+
-                |   User / Browser     |
-                +----------+-----------+
-                           |
-                           v
-              +---------------------------+
-              |   Next.js (Cloud Run)    |
-              |   Frontend UI            |
-              +-------------+-------------+
-                            |
-                            v
-              +---------------------------+
-              | GraphQL API (Cloud Run)  |
-              +-------------+-------------+
-                            |
-                            v
-           +--------------------------------+
-           | MongoDB Atlas Serverless       |
-           +--------------------------------+
-```
-
-## 📁 Project Structure
-
-```
-EpiTrello/
-├── backend/              # GraphQL API
-│   ├── Dockerfile.dev
-│   ├── Dockerfile.prod
-│   └── src/
-├── frontend/             # Next.js Application
-│   ├── Dockerfile.dev
-│   ├── Dockerfile.prod
-│   └── src/
-├── docs/                 # Documentation
-├── docker-compose.dev.yml
-├── docker-compose.prod.yml
-├── .gitignore
-└── .dockerignore
-```
-
-## 🚀 Quick Start
-
-> 📖 **For detailed setup instructions, see [SETUP.md](SETUP.md)**
-
-### Prerequisites
-
-- Docker & Docker Compose
+- Docker and Docker Compose installed
 - Node.js 20+ (for local development without Docker)
-- MongoDB Atlas account (for production)
-- Google Cloud account (for deployment)
+- Git
 
-### Development with Docker (use the helper script)
+## Environment Files
 
-1. **Clone the project**
-   ```bash
-   git clone <repo-url>
-   cd EpiTrello
-   ```
+- `.env.dev` is used for local development with Docker.
+- `.env.prod` is used for production with Docker.
+- `.env.dev.example` and `.env.prod.example` show the expected variables with placeholder values.
 
-2. **Clean and start dev stack (recommended)**
-   ```bash
-   ./scripts/clean_rebuild.sh
-   ```
-   This script:
-   - uses `--env-file .env` with docker compose
-   - performs a down + project resource cleanup
-   - rebuilds without cache
-   - runs `docker compose up --build`
+Never commit real `.env` files to version control. Only the `.example` files are tracked.
 
-3. **Accès aux services**
-   - Frontend: http://localhost:3000
-   - Backend GraphQL: http://localhost:4000/graphql
-   - MongoDB: localhost:27017
+## Services Overview
 
-### Local Development (without Docker)
+When running the dev compose file, you get:
 
-#### Backend
+- **Postgres**: `localhost:5432`
+- **Backend (GraphQL API)**: `http://localhost:4000/graphql`
+- **Frontend (Next.js)**: `http://localhost:3000`
+- **pgAdmin**: `http://localhost:5050`
+- **Docs (SpectaQL)**: `http://localhost:4400`
+
+## Auto Reload (Docker, Development)
+
+Hot reload is enabled for both backend and frontend in the dev Docker setup.  
+When you edit files in `backend/` or `frontend/`, the containers will automatically reload.
+
+## Quick Start (Docker, Development)
+
+```bash
+docker compose -f docker-compose.dev.yml --env-file .env.dev up --build
+```
+
+Stop services:
+
+```bash
+docker compose -f docker-compose.dev.yml --env-file .env.dev down
+```
+
+Reset everything (containers + volumes):
+
+```bash
+docker compose -f docker-compose.dev.yml --env-file .env.dev down -v
+```
+
+## Helper Script (Clean Rebuild)
+
+The script `scripts/clean_rebuild.sh` removes containers, volumes, networks, and images for a clean rebuild.
+
+### Development
+
+```bash
+./scripts/clean_rebuild.sh
+```
+
+### Production
+
+```bash
+./scripts/clean_rebuild.sh --prod
+```
+
+## pgAdmin Access
+
+Open `http://localhost:5050` and log in with the values from:
+
+- `PGADMIN_DEFAULT_EMAIL`
+- `PGADMIN_DEFAULT_PASSWORD`
+
+The Postgres server is pre-registered inside pgAdmin.  
+If you don’t see tables, the database is empty and migrations/seeds have not been run yet.
+
+## Local Development (Without Docker)
+
+You can run the services locally if you have Postgres installed.
+
+### Backend
 
 ```bash
 cd backend
 npm install
 
-# Create and configure environment file
-cat > .env << EOF
+cat > .env << ENV_EOF
 NODE_ENV=development
 PORT=4000
-MONGODB_URI=mongodb://epitrello:epitrello_dev_password@localhost:27017/epitrello?authSource=admin
+DATABASE_URL=postgresql://username:password@localhost:5432/epitrello?schema=public
 JWT_SECRET=dev_jwt_secret_change_in_production
 CORS_ORIGIN=http://localhost:3000
-EOF
+ENV_EOF
 
 npm run dev
 ```
 
-#### Frontend
+### Frontend
 
 ```bash
 cd frontend
 npm install
 
-# Create and configure environment file
-cat > .env.local << EOF
+cat > .env.local << ENV_EOF
 NEXT_PUBLIC_GRAPHQL_API=http://localhost:4000/graphql
-EOF
+ENV_EOF
 
 npm run dev
 ```
 
-## 🐳 Docker
+## Production (Docker Compose)
 
-### Development Environment
+1. Create the file:
+   ```bash
+   cp .env.prod.example .env.prod
+   nano .env.prod
+   ```
+
+2. Start services:
+   ```bash
+   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+   ```
+
+## Environment Variables Reference (Development)
+
+Common variables used by `docker-compose.dev.yml`:
+
+- `POSTGRES_USER`
+- `POSTGRES_PASSWORD`
+- `POSTGRES_DB`
+- `DATABASE_URL`
+- `JWT_SECRET`
+- `CORS_ORIGIN`
+- `BACKEND_PORT`
+- `FRONTEND_PORT`
+- `NEXT_PUBLIC_GRAPHQL_API`
+- `PGADMIN_DEFAULT_EMAIL`
+- `PGADMIN_DEFAULT_PASSWORD`
+
+## Troubleshooting
+
+### Tables Not Visible in pgAdmin
+
+This usually means the database has not been migrated/seeded yet.  
+Run the migrations or seeds from the backend (once they exist).
+
+### Port Already in Use
+
+Change `BACKEND_PORT` or `FRONTEND_PORT` inside `.env.dev` and restart.
+
+### Permission Issues (Linux)
+
+If you see permission errors with volumes:
+
 ```bash
-# The .env.dev file is already provided with default values
-# Start services directly
-docker-compose -f docker-compose.dev.yml --env-file .env.dev up --build
+sudo chown -R $USER:$USER .
 ```
 
-### Production Environment
-```bash
-# Create .env.prod from the example and fill with your production values
-cp .env.prod.example .env.prod
-nano .env.prod
+## Next Steps
 
-# Start services
-docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
-```
-
-### Stop Services
-```bash
-# Development
-docker-compose -f docker-compose.dev.yml down
-
-# Production
-docker-compose -f docker-compose.prod.yml down
-
-# With volume cleanup
-docker-compose -f docker-compose.dev.yml down -v
-```
-
-## 🔧 Configuration
-
-### Environment Variables
-
-The project uses different environment files for different purposes:
-
-#### Docker Development (.env.dev)
-Used by `docker-compose.dev.yml`:
-```env
-# MongoDB Configuration
-MONGO_INITDB_ROOT_USERNAME=epitrello
-MONGO_INITDB_ROOT_PASSWORD=epitrello_dev_password
-MONGO_INITDB_DATABASE=epitrello
-
-# Backend Configuration
-NODE_ENV=development
-BACKEND_PORT=4000
-MONGODB_URI=mongodb://epitrello:epitrello_dev_password@mongodb:27017/epitrello?authSource=admin
-JWT_SECRET=dev_jwt_secret_change_in_production
-CORS_ORIGIN=http://localhost:3000
-
-# Frontend Configuration
-FRONTEND_PORT=3000
-NEXT_PUBLIC_GRAPHQL_API=http://localhost:4000/graphql
-```
-
-#### Docker Production (.env.prod)
-Used by `docker-compose.prod.yml`:
-```env
-NODE_ENV=production
-BACKEND_PORT=4000
-MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/epitrello
-JWT_SECRET=your_very_secure_jwt_secret
-CORS_ORIGIN=https://your-frontend-domain.com
-FRONTEND_PORT=3000
-NEXT_PUBLIC_GRAPHQL_API=https://your-backend-domain.com/graphql
-```
-
-#### Local Backend Development (backend/.env)
-For running backend without Docker:
-```env
-NODE_ENV=development
-PORT=4000
-MONGODB_URI=mongodb://epitrello:epitrello_dev_password@localhost:27017/epitrello?authSource=admin
-JWT_SECRET=dev_jwt_secret_change_in_production
-CORS_ORIGIN=http://localhost:3000
-```
-
-#### Local Frontend Development (frontend/.env.local)
-For running frontend without Docker:
-```env
-NEXT_PUBLIC_GRAPHQL_API=http://localhost:4000/graphql
-```
-
-**Note:** Never commit `.env`, `.env.dev`, `.env.prod`, or `.env.local` files to version control. Only the `.example` files should be committed.
-
-## 🚢 Deployment
-
-### Cloud Prerequisites
-
-1. **Create a Google Cloud project**
-2. **Enable Cloud Run API**
-3. **Configure MongoDB Atlas**
-
-### Manual Deployment
-
-#### Backend
-```bash
-cd backend
-gcloud run deploy epitrello-backend \
-  --source . \
-  --region europe-west1 \
-  --allow-unauthenticated
-```
-
-#### Frontend
-```bash
-cd frontend
-gcloud run deploy epitrello-frontend \
-  --source . \
-  --region europe-west1 \
-  --allow-unauthenticated
-```
-
-## 🧪 Testing
-
-### Backend
-```bash
-cd backend
-npm test
-```
-
-### Frontend
-```bash
-cd frontend
-npm test
-```
-
-## 📝 Available Scripts
-
-### Backend
-- `npm run dev` - Start in development mode
-- `npm start` - Start in production mode
-- `npm test` - Run tests
-- `npm run lint` - Lint code
-
-### Frontend
-- `npm run dev` - Start in development mode
-- `npm run build` - Production build
-- `npm start` - Start in production mode
-- `npm test` - Run tests
-- `npm run lint` - Lint code
-
-## 🛠️ Tech Stack
-
-### Frontend
-- Next.js 14
-- React
-- TypeScript
-- Apollo Client
-- TailwindCSS
-
-### Backend
-- Node.js
-- Apollo Server
-- GraphQL
-- MongoDB
-- JWT
-
-### Infrastructure
-- Docker
-- Google Cloud Run
-- MongoDB Atlas
-
-## 📚 Documentation
-
-Check the `docs/` folder for more detailed documentation.
-
-## 🤝 Contributing
-
-1. Fork the project
-2. Create a branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License.
-
----
-
-Let's get to work! 🚀
+- Read [docs/README.md](docs/README.md)
+- Start building features!

@@ -1,0 +1,320 @@
+swagger: '2.0'
+info:
+  title: Web Service & Discord Bot API Gateway
+  description: API Gateway with endpoints for web service and Discord bot.
+  version: 2.0.0
+schemes:
+  - https
+produces:
+  - application/json
+consumes:
+  - application/json
+paths:
+  /discord/interactions:
+    post:
+      summary: Handle Discord interactions
+      description:
+        Webhook endpoint for Discord bot interactions. Routes to Proxy
+        Service which publishes to Pub/Sub topics.
+      operationId: discordInteractions
+      x-google-backend:
+        address: https://proxy-gdu7lmfosq-ew.a.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      parameters:
+        - name: X-Signature-Ed25519
+          in: header
+          required: true
+          type: string
+          description: Discord signature for request verification
+        - name: X-Signature-Timestamp
+          in: header
+          required: true
+          type: string
+          description: Discord timestamp for request verification
+        - name: interaction
+          in: body
+          required: true
+          schema:
+            type: object
+            description: Discord interaction payload
+      responses:
+        '200':
+          description: Successful interaction response
+          schema:
+            type: object
+        '400':
+          description: Bad Request - Missing headers or invalid JSON
+          schema:
+            type: string
+        '401':
+          description: Unauthorized - Invalid signature
+          schema:
+            type: string
+        '500':
+          description: Internal Server Error
+          schema:
+            type: string
+  /web/interactions:
+    options:
+      summary: CORS preflight for web interactions
+      description: Handle CORS preflight requests
+      operationId: webInteractionsOptions
+      x-google-backend:
+        address: https://proxy-gdu7lmfosq-ew.a.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      responses:
+        '200':
+          description: CORS preflight response
+    post:
+      summary: Handle web interactions
+      description:
+        Endpoint for web client interactions. Routes to Proxy Service which
+        publishes to Pub/Sub topics.
+      operationId: webInteractions
+      x-google-backend:
+        address: https://proxy-gdu7lmfosq-ew.a.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      parameters:
+        - name: X-Session-ID
+          in: header
+          required: true
+          type: string
+          description: Session identifier issued by auth-service after Discord OAuth2
+        - name: interaction
+          in: body
+          required: true
+          schema:
+            type: object
+            description: Web interaction payload
+            properties:
+              command:
+                type: string
+                description: Command name
+              options:
+                type: array
+                description: Command options
+              token:
+                type: string
+                description: Interaction token
+              application_id:
+                type: string
+                description: Application ID
+      responses:
+        '200':
+          description: Successful interaction response (immediate)
+          schema:
+            type: object
+        '202':
+          description: Command accepted and being processed
+          schema:
+            type: object
+        '400':
+          description: Bad Request - Invalid JSON or missing command
+          schema:
+            type: object
+        '500':
+          description: Internal Server Error
+          schema:
+            type: object
+        '503':
+          description: Service Temporarily Unavailable
+          schema:
+            type: object
+  /health:
+    options:
+      summary: CORS preflight for health check
+      description: Handle CORS preflight requests
+      operationId: healthCheckOptions
+      x-google-backend:
+        address: https://proxy-gdu7lmfosq-ew.a.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      responses:
+        '200':
+          description: CORS preflight response
+    get:
+      summary: Web service health check endpoint
+      description: Endpoint for checking the health status of the proxy service
+      operationId: healthCheck
+      x-google-backend:
+        address: https://proxy-gdu7lmfosq-ew.a.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      responses:
+        '200':
+          description: Service is healthy
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+              service:
+                type: string
+              project_id:
+                type: string
+              topics:
+                type: object
+  /auth/login:
+    get:
+      summary: Initiate Discord OAuth2 login
+      description: Redirects to Discord OAuth2 authorization page
+      operationId: authLogin
+      x-google-backend:
+        address: https://discord-auth-service-gdu7lmfosq-ew.a.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      responses:
+        '302':
+          description: Redirect to Discord OAuth2
+        '500':
+          description: OAuth2 not configured
+          schema:
+            type: object
+  /auth/callback:
+    get:
+      summary: Handle Discord OAuth2 callback
+      description: Processes OAuth2 callback from Discord and creates user session
+      operationId: authCallback
+      x-google-backend:
+        address: https://discord-auth-service-gdu7lmfosq-ew.a.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      parameters:
+        - name: code
+          in: query
+          required: true
+          type: string
+          description: OAuth2 authorization code
+        - name: state
+          in: query
+          required: false
+          type: string
+          description: CSRF protection state token
+      responses:
+        '302':
+          description: Redirect to frontend with session
+        '400':
+          description: Bad Request - Missing code or invalid request
+          schema:
+            type: object
+        '500':
+          description: Internal Server Error
+          schema:
+            type: object
+  /auth/logout:
+    options:
+      summary: CORS preflight for logout
+      description: Handle CORS preflight requests
+      operationId: authLogoutOptions
+      x-google-backend:
+        address: https://discord-auth-service-gdu7lmfosq-ew.a.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      responses:
+        '200':
+          description: CORS preflight response
+    post:
+      summary: Logout user
+      description: Invalidates user session
+      operationId: authLogout
+      x-google-backend:
+        address: https://discord-auth-service-gdu7lmfosq-ew.a.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      parameters:
+        - name: session
+          in: body
+          required: true
+          schema:
+            type: object
+            properties:
+              session_id:
+                type: string
+      responses:
+        '200':
+          description: Logout successful
+          schema:
+            type: object
+        '400':
+          description: Bad Request
+          schema:
+            type: object
+        '500':
+          description: Internal Server Error
+          schema:
+            type: object
+  /auth/verify:
+    options:
+      summary: CORS preflight for verify
+      description: Handle CORS preflight requests
+      operationId: authVerifyOptions
+      x-google-backend:
+        address: https://discord-auth-service-gdu7lmfosq-ew.a.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      responses:
+        '200':
+          description: CORS preflight response
+    post:
+      summary: Verify session
+      description: Verify if a session token is valid
+      operationId: authVerify
+      x-google-backend:
+        address: https://discord-auth-service-gdu7lmfosq-ew.a.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      parameters:
+        - name: session
+          in: body
+          required: true
+          schema:
+            type: object
+            properties:
+              session_id:
+                type: string
+      responses:
+        '200':
+          description: Session is valid
+          schema:
+            type: object
+        '400':
+          description: Bad Request - Missing session_id
+          schema:
+            type: object
+        '401':
+          description: Unauthorized - Invalid or expired session
+          schema:
+            type: object
+        '500':
+          description: Internal Server Error
+          schema:
+            type: object
+  /auth/user:
+    options:
+      summary: CORS preflight for get user
+      description: Handle CORS preflight requests
+      operationId: authGetUserOptions
+      x-google-backend:
+        address: https://discord-auth-service-gdu7lmfosq-ew.a.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      responses:
+        '200':
+          description: CORS preflight response
+    get:
+      summary: Get current user information
+      description: Get user information from session
+      operationId: authGetUser
+      x-google-backend:
+        address: https://discord-auth-service-gdu7lmfosq-ew.a.run.app
+        path_translation: APPEND_PATH_TO_ADDRESS
+      parameters:
+        - name: X-Session-ID
+          in: header
+          required: true
+          type: string
+          description: Session ID
+      responses:
+        '200':
+          description: User information
+          schema:
+            type: object
+        '401':
+          description: Unauthorized - Invalid or expired session
+          schema:
+            type: object
+        '500':
+          description: Internal Server Error
+          schema:
+            type: object
