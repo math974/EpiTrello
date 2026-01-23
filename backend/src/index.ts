@@ -3,9 +3,9 @@ import { ApolloServer } from '@apollo/server';
 import { expressMiddleware } from '@apollo/server/express4';
 import cors, { type CorsOptions } from 'cors';
 import express from 'express';
+import { resolvers, typeDefs } from './graphql/index.js';
+import { buildContext } from './middleware/auth.js';
 import { prisma } from './prisma.js';
-import { resolvers } from './schema/resolvers.js';
-import { typeDefs } from './schema/typeDefs.js';
 
 const app = express();
 
@@ -31,7 +31,12 @@ const startServer = async () => {
     }
   });
 
-  app.use('/graphql', cors(corsOptions), express.json(), expressMiddleware(server));
+  app.use(
+    '/graphql',
+    cors(corsOptions),
+    express.json(),
+    expressMiddleware(server, { context: buildContext })
+  );
 
   const PORT = Number(process.env.PORT) || 4000;
   app.listen(PORT, () => {
