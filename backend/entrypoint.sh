@@ -5,7 +5,8 @@ echo "Running prisma migrate deploy..."
 npx prisma migrate deploy
 
 echo "Starting app..."
-node dist/index.js
+node dist/main.js
+
 
 
 
