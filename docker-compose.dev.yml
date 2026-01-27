@@ -70,13 +70,21 @@ services:
       - /app/node_modules
       - /app/.next
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - epitrello-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:3000/ || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
 
   prisma-studio:
     image: node:lts-alpine3.17
     working_dir: /usr/src/app/backend
+    container_name: epitrello-prisma-studio-dev
+    restart: unless-stopped
     volumes:
       - .:/usr/src/app
     environment:
