@@ -25,6 +25,9 @@ When running the dev compose file, you get:
 - **Frontend (Next.js)**: `http://localhost:3000`
 - **pgAdmin**: `http://localhost:5050`
 - **Docs (SpectaQL)**: `http://localhost:4400`
+- **Prisma Studio**: `http://localhost:5555`
+
+Prisma Studio is a web UI to browse and edit your database tables during development.
 
 ## Auto Reload (Docker, Development)
 
@@ -144,6 +147,26 @@ Common variables used by `docker-compose.dev.yml`:
 
 This usually means the database has not been migrated/seeded yet.  
 Run the migrations or seeds from the backend (once they exist).
+
+## Database Migrations (Prisma)
+
+You must run Prisma migrations to create/update database tables after schema changes.
+
+### Docker (recommended)
+```bash
+docker compose -f docker-compose.dev.yml --env-file .env.dev exec backend \
+  npx prisma migrate dev --name init
+```
+
+### Local (no Docker)
+```bash
+cd backend
+export DATABASE_URL="postgresql://user:password@localhost:5432/epitrello?schema=public"
+npx prisma migrate dev --name init
+```
+
+> If your `DATABASE_URL` uses `postgres:5432`, run the migration inside Docker.  
+> `postgres` is the Docker service name, not available locally.
 
 ### Port Already in Use
 
