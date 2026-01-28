@@ -6,7 +6,7 @@ export class RegisterInput {
   @Field()
   @IsString()
   @MinLength(2)
-  name!: string;
+  username!: string;
 
   @Field()
   @IsEmail()

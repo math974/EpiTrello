@@ -80,8 +80,8 @@ echo ">> Removing project images (prefix ${PROJECT_PREFIX})"
 docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' | grep -E "^${PROJECT_PREFIX}" || true | awk '{print $2}' | xargs -r docker rmi -f
 
 if [[ "${FULL_CLEAN}" == "true" ]]; then
-  echo ">> Removing project volumes (prefix ${PROJECT_PREFIX})"
-  docker volume ls --format '{{.Name}}' | grep -E "^${PROJECT_PREFIX}" || true | xargs -r docker volume rm
+echo ">> Removing project volumes (prefix ${PROJECT_PREFIX})"
+docker volume ls --format '{{.Name}}' | grep -E "^${PROJECT_PREFIX}" || true | xargs -r docker volume rm
 else
   echo ">> Skipping volume removal (use --full to remove volumes)"
 fi

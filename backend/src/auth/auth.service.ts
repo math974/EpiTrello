@@ -20,14 +20,14 @@ export class AuthService {
 
     const existing = await this.prisma.user.findFirst({
       where: {
-        OR: [{ email }, { username: input.name }],
+        OR: [{ email }, { username: input.username }],
       },
     });
 
     if (existing?.email === email) {
       throw new BadRequestException('Email already in use');
     }
-    if (existing?.username === input.name) {
+    if (existing?.username === input.username) {
       throw new BadRequestException('Username already in use');
     }
 
@@ -36,7 +36,7 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: {
         email,
-        username: input.name,
+        username: input.username,
         passwordHash,
       },
     });

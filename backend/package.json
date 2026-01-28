@@ -15,6 +15,7 @@
     "prisma:migrate": "prisma migrate deploy"
   },
   "dependencies": {
+    "@apollo/server": "^4.12.2",
     "@nestjs/apollo": "^12.1.0",
     "@nestjs/common": "^10.3.2",
     "@nestjs/config": "^3.2.3",
