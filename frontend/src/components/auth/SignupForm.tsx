@@ -4,7 +4,11 @@ import { Button } from '@/components/shadcn/ui/button';
 import { Input } from '@/components/shadcn/ui/input';
 import { Separator } from '@/components/shadcn/ui/separator';
 
-export default function SignupForm() {
+type SignupFormProps = {
+  oauthLoadingProvider?: 'github' | 'discord' | null;
+};
+
+export default function SignupForm({ oauthLoadingProvider = null }: SignupFormProps) {
   return (
     <div className="space-y-6">
       <form className="space-y-4">
@@ -47,7 +51,7 @@ export default function SignupForm() {
         </div>
       </div>
 
-      <OAuthButtons />
+      <OAuthButtons loadingProvider={oauthLoadingProvider} />
 
       <div className="text-center text-sm text-trello-gray">
         Deja un compte ?{' '}
