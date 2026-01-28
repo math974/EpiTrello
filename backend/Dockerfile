@@ -15,10 +15,11 @@ RUN npx prisma generate
 FROM base AS dev
 WORKDIR /app
 ENV NODE_ENV=development
+RUN npm install -g pnpm
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 EXPOSE 4000
-CMD ["npm", "run", "dev"]
+CMD ["pnpm", "run", "dev"]
 
 # ---------- builder ----------
 FROM base AS builder
@@ -26,13 +27,8 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NODE_ENV=production
-RUN \
-  if [ -f yarn.lock ]; then yarn run build; \
-  elif [ -f package-lock.json ]; then npm run build; \
-  elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm run build; \
-  else echo "Lockfile not found." && exit 1; \
-  fi
-RUN npm prune --production
+RUN npm install -g pnpm && pnpm run build
+RUN pnpm prune --prod
 
 # ---------- runner ----------
 FROM node:lts-bullseye-slim AS runner

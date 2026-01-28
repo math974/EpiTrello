@@ -66,7 +66,7 @@ services:
     volumes:
       - ./backend:/app
       - /app/node_modules
-    command: npm run test:cov:watch
+    command: pnpm run test:cov:watch
     networks:
       - epitrello-network
 

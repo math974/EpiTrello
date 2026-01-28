@@ -14,14 +14,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22.14.0'
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
+          cache: 'pnpm'
       - name: Install dependencies
         working-directory: backend
-        run: npm ci
+        run: |
+          corepack enable pnpm
+          pnpm install --no-frozen-lockfile
       - name: Run unit tests with coverage
         working-directory: backend
-        run: npm run test:cov
+        run: pnpm run test:cov
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
