@@ -52,6 +52,35 @@ services:
       timeout: 3s
       retries: 10
 
+  backend-tests:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: dev
+    container_name: epitrello-backend-tests-dev
+    restart: unless-stopped
+    environment:
+      NODE_ENV: test
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    command: npm run test:cov:watch
+    networks:
+      - epitrello-network
+
+  backend-coverage:
+    image: nginx:alpine
+    container_name: epitrello-backend-coverage-dev
+    restart: unless-stopped
+    ports:
+      - "7331:80"
+    volumes:
+      - ./backend/coverage/lcov-report:/usr/share/nginx/html:ro
+    networks:
+      - epitrello-network
+
   frontend:
     build:
       context: ./frontend

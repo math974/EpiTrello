@@ -9,6 +9,8 @@
     "start": "node dist/main.js",
     "test": "jest --runInBand",
     "test:cov": "jest --runInBand --coverage",
+    "test:watch": "jest --watchAll",
+    "test:cov:watch": "jest --watchAll --coverage",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy"
   },

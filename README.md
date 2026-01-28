@@ -24,6 +24,8 @@ When running the dev compose file, you get:
 
 - **Postgres**: `localhost:5432`
 - **Backend (GraphQL API)**: `http://localhost:4000/graphql`
+- **Backend Tests (watch)**: runs unit tests on file change
+- **Backend Coverage (HTML)**: `http://localhost:7331`
 - **Frontend (Next.js)**: `http://localhost:3000`
 - **pgAdmin**: `http://localhost:5050`
 - **Docs (SpectaQL)**: `http://localhost:4400`
@@ -41,6 +43,19 @@ When you edit files in `backend/` or `frontend/`, the containers will automatica
 ```bash
 docker compose -f docker-compose.dev.yml --env-file .env.dev up --build
 ```
+
+### Backend Unit Tests (Watch + HTML Coverage)
+
+Start the test watcher:
+
+```bash
+docker compose -f docker-compose.dev.yml --env-file .env.dev up backend-tests
+```
+
+Open the HTML coverage report:
+
+- `http://localhost:7331`
+- Files are generated in `backend/coverage/lcov-report`.
 
 Stop services:
 
