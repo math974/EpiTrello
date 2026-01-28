@@ -1,5 +1,7 @@
 # EpiTrello
 
+[![codecov](https://codecov.io/gh/math974/EpiTrello/branch/main/graph/badge.svg)](https://codecov.io/gh/math974/EpiTrello)
+
 A modern Trello clone with a GraphQL API, a Next.js frontend, and a Postgres database.
 
 ## Prerequisites
