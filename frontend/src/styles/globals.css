@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
 :root {
   --trello-blue: #0079bf;
   --trello-blue-dark: #026aa7;
@@ -109,4 +111,3 @@ body {
     @apply bg-background text-foreground;
   }
 }
-
