@@ -41,7 +41,7 @@ export class AuthService {
       },
     });
 
-    const tokens = await this.issueTokens(user.id);
+    const tokens = await this.issueTokens(user);
     await this.storeRefreshToken(user.id, tokens.refreshToken);
 
     return { ...tokens, user };
@@ -60,7 +60,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const tokens = await this.issueTokens(user.id);
+    const tokens = await this.issueTokens(user);
     await this.storeRefreshToken(user.id, tokens.refreshToken);
 
     return { ...tokens, user };
@@ -79,34 +79,55 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    const tokens = await this.issueTokens(user.id);
+    const tokens = await this.issueTokens(user);
     await this.storeRefreshToken(user.id, tokens.refreshToken);
 
     return { ...tokens, user };
   }
 
-  async getUserIdFromAccessToken(authHeader?: string) {
+  async logout(input: RefreshTokenInput) {
+    const payload = await this.verifyRefreshToken(input.refreshToken);
+    const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
+
+    if (!user || !user.refreshTokenHash) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    const valid = await bcrypt.compare(input.refreshToken, user.refreshTokenHash);
+    if (!valid) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { refreshTokenHash: null, tokenVersion: { increment: 1 } },
+    });
+
+    return true;
+  }
+
+  async getAccessPayload(authHeader?: string) {
     if (!authHeader?.startsWith('Bearer ')) {
       return null;
     }
     const token = authHeader.replace('Bearer ', '').trim();
     try {
-      const payload = await this.jwt.verifyAsync<{ sub: string }>(token, {
+      const payload = await this.jwt.verifyAsync<{ sub: string; tv: number }>(token, {
         secret: this.accessSecret(),
       });
-      return payload.sub;
+      return { userId: payload.sub, tokenVersion: payload.tv ?? 0 };
     } catch {
       return null;
     }
   }
 
-  private async issueTokens(userId: string) {
+  private async issueTokens(user: { id: string; tokenVersion: number }) {
     const accessToken = await this.jwt.signAsync(
-      { sub: userId },
+      { sub: user.id, tv: user.tokenVersion },
       { secret: this.accessSecret(), expiresIn: '15m' }
     );
     const refreshToken = await this.jwt.signAsync(
-      { sub: userId },
+      { sub: user.id },
       { secret: this.refreshSecret(), expiresIn: '7d' }
     );
     return { accessToken, refreshToken };

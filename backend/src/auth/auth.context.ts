@@ -11,9 +11,12 @@ export class AuthContextService {
 
   async buildContext(req: { headers?: Record<string, string | undefined> }) {
     const authHeader = req.headers?.authorization;
-    const userId = await this.authService.getUserIdFromAccessToken(authHeader);
-    const user = userId ? await this.prisma.user.findUnique({ where: { id: userId } }) : null;
+    const payload = await this.authService.getAccessPayload(authHeader);
+    const user = payload
+      ? await this.prisma.user.findUnique({ where: { id: payload.userId } })
+      : null;
+    const validUser = user && user.tokenVersion === payload?.tokenVersion ? user : null;
 
-    return { req, user };
+    return { req, user: validUser };
   }
 }

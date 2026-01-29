@@ -26,6 +26,11 @@ export class AuthResolver {
     return this.authService.refresh(input);
   }
 
+  @Mutation(() => Boolean)
+  logout(@Args('input', { type: () => RefreshTokenInput }) input: RefreshTokenInput) {
+    return this.authService.logout(input);
+  }
+
   @Query(() => UserModel, { nullable: true })
   me(@Context('user') user: UserModel | null) {
     return user;
