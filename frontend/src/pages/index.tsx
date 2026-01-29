@@ -1,199 +1,210 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { useMutation, useQuery } from '@apollo/client';
-import Navbar from '../components/Navbar';
-import BoardCard from '../components/BoardCard';
-import CreateBoardModal from '../components/CreateBoardModal';
-import { CREATE_BOARD, CREATE_USER, GET_BOARDS, GET_USERS } from '../lib/queries';
+import Link from 'next/link';
 
-type User = {
-  id: string;
-  username: string;
-  email: string;
-  avatar?: string | null;
-  createdAt: string;
-};
+const FEATURE_LIST = [
+  {
+    title: 'Tableaux clairs et visuels',
+    description: 'Organisez vos projets avec des listes flexibles, des labels et des cartes riches.',
+  },
+  {
+    title: 'Collaboration temps reel',
+    description: 'Partagez un tableau et avancez ensemble avec une vision commune.',
+  },
+  {
+    title: 'Flux de travail fluide',
+    description: 'Passez de l idee au fait accompli avec une structure simple et efficace.',
+  },
+];
 
-type Board = {
-  id: string;
-  title: string;
-  description?: string | null;
-  background: string;
-  owner: User;
-  createdAt: string;
-  updatedAt: string;
-};
+const STEPS = [
+  {
+    title: 'Creez un espace',
+    description: 'Lancez un tableau en quelques secondes, puis invitez votre equipe.',
+  },
+  {
+    title: 'Ajoutez vos cartes',
+    description: 'Decoupez votre travail en taches claires, directement actionnables.',
+  },
+  {
+    title: 'Faites avancer les projets',
+    description: 'Glissez les cartes pour suivre la progression en un coup d oeil.',
+  },
+];
 
-type CreateBoardInput = {
-  title: string;
-  background: string;
-};
-
-export default function Home() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-
-  const {
-    data: boardsData,
-    loading: boardsLoading,
-    refetch: refetchBoards,
-  } = useQuery<{ boards: Board[] }>(GET_BOARDS);
-
-  const {
-    data: usersData,
-    loading: usersLoading,
-    refetch: refetchUsers,
-  } = useQuery<{ users: User[] }>(GET_USERS);
-
-  const [createBoard] = useMutation<{ createBoard: Board }, CreateBoardInput & { ownerId: string }>(CREATE_BOARD);
-  const [createUser] = useMutation<{ createUser: User }, { username: string; email: string; avatar?: string | null }>(
-    CREATE_USER
-  );
-
-  useEffect(() => {
-    const initUser = async () => {
-      if (!usersLoading && usersData) {
-        if (usersData.users.length === 0) {
-          try {
-            const { data } = await createUser({
-              variables: {
-                username: 'Utilisateur',
-                email: 'user@epitrello.com',
-              },
-            });
-            if (data?.createUser) {
-              setCurrentUser(data.createUser);
-            }
-            refetchUsers();
-          } catch (error) {
-            console.error('Error creating user:', error);
-          }
-        } else {
-          setCurrentUser(usersData.users[0]);
-        }
-      }
-    };
-    void initUser();
-  }, [usersLoading, usersData, createUser, refetchUsers]);
-
-  const handleCreateBoard = async ({ title, background }: CreateBoardInput) => {
-    if (!currentUser) return;
-    try {
-      await createBoard({
-        variables: {
-          title,
-          background,
-          ownerId: currentUser.id,
-        },
-      });
-      refetchBoards();
-    } catch (error) {
-      console.error('Error creating board:', error);
-    }
-  };
-
-  const boards = boardsData?.boards ?? [];
-  const isLoading = boardsLoading || usersLoading;
-
+export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-trello-bg-light">
-      <Navbar />
+    <div className="min-h-screen bg-slate-950 text-white">
+      <div className="relative overflow-hidden">
+        <div className="pointer-events-none absolute -top-40 left-1/2 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,_rgba(14,165,233,0.35),_rgba(15,23,42,0))]" />
+        <div className="pointer-events-none absolute right-[-120px] top-32 h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle,_rgba(16,185,129,0.25),_rgba(15,23,42,0))]" />
+        <div className="pointer-events-none absolute left-[-140px] bottom-[-120px] h-[520px] w-[520px] rounded-full bg-[radial-gradient(circle,_rgba(99,102,241,0.2),_rgba(15,23,42,0))]" />
 
-      <main className="max-w-6xl mx-auto p-6">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-trello-navy mb-2">Bienvenue sur EpiTrello ! 👋</h1>
-          <p className="text-trello-gray">Gérez vos projets et collaborez avec votre équipe efficacement.</p>
-        </div>
-
-        <section>
-          <div className="flex items-center gap-3 mb-4">
-            <svg className="w-6 h-6 text-trello-navy" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-            <h2 className="text-lg font-semibold text-trello-navy">Vos tableaux</h2>
-          </div>
-
-          {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-24 bg-gray-200 rounded-lg animate-pulse" />
-              ))}
+        <header className="sticky top-0 z-20 border-b border-white/10 bg-slate-950/80 backdrop-blur">
+          <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-sky-400 to-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="3" y="3" width="7" height="18" rx="1.5" />
+                  <rect x="14" y="3" width="7" height="11" rx="1.5" />
+                </svg>
+              </div>
+              <span className="text-lg font-semibold tracking-wide">EpiTrello</span>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {boards.map((board) => (
-                <BoardCard key={board.id} board={board} onClick={() => console.log('Navigate to board:', board.id)} />
-              ))}
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="h-24 bg-trello-bg-gray hover:bg-gray-300 rounded-lg flex items-center justify-center transition-colors"
+
+            <nav className="hidden items-center gap-8 text-sm text-white/70 md:flex">
+              <Link href="#features" className="transition hover:text-white">Fonctionnalites</Link>
+              <Link href="#workflow" className="transition hover:text-white">Workflow</Link>
+              <Link href="#cta" className="transition hover:text-white">Commencer</Link>
+            </nav>
+
+            <div className="flex items-center gap-3 text-sm">
+              <Link href="/login" className="text-white/70 transition hover:text-white">Se connecter</Link>
+              <Link
+                href="/signup"
+                className="rounded-full bg-white px-4 py-2 font-semibold text-slate-950 shadow-lg shadow-white/20 transition hover:-translate-y-0.5"
               >
-                <span className="text-trello-gray font-medium">+ Créer un tableau</span>
-              </button>
+                Creer un compte
+              </Link>
             </div>
-          )}
-        </section>
+          </div>
+        </header>
 
-        <section className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <StatCard
-            title="Tableaux"
-            value={boards.length}
-            icon={
-              <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="3" y="3" width="7" height="18" rx="1.5" />
-                <rect x="14" y="3" width="7" height="11" rx="1.5" />
-              </svg>
-            }
-            color="bg-trello-blue"
-          />
-          <StatCard
-            title="Membres"
-            value={usersData?.users?.length || 0}
-            icon={
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"
-                />
-              </svg>
-            }
-            color="bg-green-500"
-          />
-          <StatCard
-            title="Statut API"
-            value="Connecté"
-            icon={
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            }
-            color="bg-purple-500"
-          />
-        </section>
-      </main>
+        <main className="relative z-10">
+          <section className="mx-auto flex max-w-6xl flex-col gap-12 px-6 pb-24 pt-16 md:flex-row md:items-center">
+            <div className="flex-1 space-y-8 font-['Space_Grotesk',sans-serif] animate-in fade-in slide-in-from-bottom-6 duration-700">
+              <div className="inline-flex items-center gap-3 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.3em] text-white/70">
+                Trello, repense pour Epitech
+              </div>
+              <h1 className="text-4xl font-semibold leading-tight text-white md:text-5xl">
+                Votre projet avance mieux quand
+                <span className="block bg-gradient-to-r from-sky-300 via-emerald-300 to-sky-100 bg-clip-text text-transparent">
+                  tout le monde voit la meme chose.
+                </span>
+              </h1>
+              <p className="max-w-xl text-base text-white/70 md:text-lg">
+                EpiTrello rassemble vos idees, vos taches et vos equipes dans un espace clair.
+                Creez des tableaux, organisez vos priorites et suivez chaque etape.
+              </p>
+              <div className="flex flex-wrap gap-4">
+                <Link
+                  href="/signup"
+                  className="rounded-full bg-gradient-to-r from-sky-300 to-emerald-300 px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-500/30 transition hover:-translate-y-0.5"
+                >
+                  Demarrer gratuitement
+                </Link>
+              </div>
+              <div className="flex items-center gap-6 text-xs uppercase tracking-[0.3em] text-white/50">
+                <span>Planifier</span>
+                <span>Prioriser</span>
+                <span>Livrer</span>
+              </div>
+            </div>
 
-      <CreateBoardModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSubmit={handleCreateBoard} />
-    </div>
-  );
-}
+            <div className="flex-1 animate-in fade-in slide-in-from-bottom-6 duration-700 delay-150">
+              <div className="relative mx-auto max-w-md rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-slate-950/60 backdrop-blur">
+                <div className="mb-4 flex items-center justify-between text-sm text-white/70">
+                  <span>Tableau: Lancement App</span>
+                  <span className="rounded-full bg-emerald-400/20 px-2 py-1 text-xs text-emerald-200">Actif</span>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="rounded-2xl bg-slate-900/80 p-4">
+                    <p className="text-xs uppercase text-white/50">A faire</p>
+                    <div className="mt-3 space-y-3">
+                      <div className="rounded-xl bg-white/5 p-3 text-sm text-white/80">Brief produit</div>
+                      <div className="rounded-xl bg-white/5 p-3 text-sm text-white/80">Design hero</div>
+                    </div>
+                  </div>
+                  <div className="rounded-2xl bg-slate-900/80 p-4">
+                    <p className="text-xs uppercase text-white/50">En cours</p>
+                    <div className="mt-3 space-y-3">
+                      <div className="rounded-xl bg-white/5 p-3 text-sm text-white/80">Formulaire auth</div>
+                      <div className="rounded-xl bg-white/5 p-3 text-sm text-white/80">Composants UI</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-4 rounded-2xl border border-dashed border-white/10 bg-white/5 p-4 text-xs text-white/50">
+                  Glisser-deposer pour mettre a jour le statut.
+                </div>
+              </div>
+            </div>
+          </section>
 
-type StatCardProps = {
-  title: string;
-  value: string | number;
-  icon: ReactNode;
-  color: string;
-};
+          <section id="features" className="mx-auto max-w-6xl px-6 pb-20">
+            <div className="grid gap-6 md:grid-cols-3">
+              {FEATURE_LIST.map((feature) => (
+                <div key={feature.title} className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                  <h3 className="text-lg font-semibold">{feature.title}</h3>
+                  <p className="mt-2 text-sm text-white/70">{feature.description}</p>
+                </div>
+              ))}
+            </div>
+          </section>
 
-function StatCard({ title, value, icon, color }: StatCardProps) {
-  return (
-    <div className="bg-white rounded-lg shadow-sm p-5 flex items-center gap-4">
-      <div className={`${color} text-white p-3 rounded-lg`}>{icon}</div>
-      <div>
-        <p className="text-sm text-trello-gray">{title}</p>
-        <p className="text-2xl font-bold text-trello-navy">{value}</p>
+          <section id="workflow" className="mx-auto max-w-6xl px-6 pb-24">
+            <div className="grid gap-10 md:grid-cols-[1.1fr,1fr]">
+              <div className="space-y-4">
+                <p className="text-xs uppercase tracking-[0.4em] text-white/50">Workflow</p>
+                <h2 className="text-3xl font-semibold">Tout le monde avance dans la meme direction.</h2>
+                <p className="text-sm text-white/70">
+                  Une vue claire, des actions rapides et des statuts visibles. EpiTrello simplifie la coordination
+                  pour que votre equipe reste alignee.
+                </p>
+                <div className="flex flex-col gap-4">
+                  {STEPS.map((step, index) => (
+                    <div key={step.title} className="flex items-start gap-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-sm font-semibold">
+                        0{index + 1}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">{step.title}</h3>
+                        <p className="text-sm text-white/70">{step.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900/80 to-slate-800 p-8">
+                <p className="text-xs uppercase text-white/60">Focus</p>
+                <h3 className="mt-4 text-2xl font-semibold">Un espace qui inspire.</h3>
+                <p className="mt-2 text-sm text-white/70">
+                  Des cartes claires, des couleurs utiles, et une vision d ensemble pour chaque projet.
+                </p>
+                <div className="mt-6 space-y-3 text-sm text-white/70">
+                  <div className="flex items-center justify-between">
+                    <span>Roadmap marketing</span>
+                    <span className="text-emerald-300">78%</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-white/10">
+                    <div className="h-2 w-[78%] rounded-full bg-emerald-300" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Prototype mobile</span>
+                    <span className="text-sky-300">56%</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-white/10">
+                    <div className="h-2 w-[56%] rounded-full bg-sky-300" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section id="cta" className="mx-auto max-w-6xl px-6 pb-24">
+            <div className="flex flex-col items-start justify-between gap-6 rounded-3xl border border-white/10 bg-gradient-to-r from-white/10 via-white/5 to-transparent p-8 md:flex-row md:items-center">
+              <div>
+                <h2 className="text-2xl font-semibold">Pret a structurer votre prochain projet ?</h2>
+                <p className="mt-2 text-sm text-white/70">Creez votre tableau et commencez maintenant.</p>
+              </div>
+              <Link
+                href="/signup"
+                className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-white/20 transition hover:-translate-y-0.5"
+              >
+                Creer mon espace
+              </Link>
+            </div>
+          </section>
+        </main>
       </div>
     </div>
   );
 }
-
