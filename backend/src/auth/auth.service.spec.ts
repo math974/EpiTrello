@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 
 jest.mock('bcryptjs', () => ({
@@ -113,6 +113,100 @@ describe('AuthService.register', () => {
         password: 'StrongPassword123!',
       })
     ).rejects.toThrow(new BadRequestException('Username already in use'));
+  });
+});
+
+describe('AuthService.login', () => {
+  const prisma = {
+    user: {
+      findUnique: jest.fn(),
+      update: jest.fn(),
+    },
+  };
+
+  const jwt = {
+    signAsync: jest.fn(),
+  };
+
+  const config = {
+    get: jest.fn(),
+  };
+
+  const createService = () => new AuthService(prisma as any, jwt as any, config as any);
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('logs in a user and returns tokens', async () => {
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      email: 'test@example.com',
+      username: 'testuser',
+      passwordHash: 'password-hash',
+    });
+
+    bcrypt.compare.mockResolvedValue(true);
+    bcrypt.hash.mockResolvedValue('refresh-hash');
+    jwt.signAsync.mockResolvedValueOnce('access-token').mockResolvedValueOnce('refresh-token');
+
+    const service = createService();
+
+    const result = await service.login({
+      email: 'Test@Example.com',
+      password: 'StrongPassword123!',
+    });
+
+    expect(prisma.user.findUnique).toHaveBeenCalledWith({
+      where: { email: 'test@example.com' },
+    });
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: 'user-1' },
+      data: { refreshTokenHash: 'refresh-hash' },
+    });
+    expect(result).toEqual({
+      accessToken: 'access-token',
+      refreshToken: 'refresh-token',
+      user: {
+        id: 'user-1',
+        email: 'test@example.com',
+        username: 'testuser',
+        passwordHash: 'password-hash',
+      },
+    });
+  });
+
+  it('throws when email is not found', async () => {
+    prisma.user.findUnique.mockResolvedValue(null);
+
+    const service = createService();
+
+    await expect(
+      service.login({
+        email: 'test@example.com',
+        password: 'StrongPassword123!',
+      })
+    ).rejects.toThrow(new UnauthorizedException('Invalid credentials'));
+  });
+
+  it('throws when password is invalid', async () => {
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      email: 'test@example.com',
+      username: 'testuser',
+      passwordHash: 'password-hash',
+    });
+
+    bcrypt.compare.mockResolvedValue(false);
+
+    const service = createService();
+
+    await expect(
+      service.login({
+        email: 'test@example.com',
+        password: 'WrongPassword123!',
+      })
+    ).rejects.toThrow(new UnauthorizedException('Invalid credentials'));
   });
 });
 
