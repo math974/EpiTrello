@@ -15,6 +15,11 @@ services:
       - pgdata:/var/lib/postgresql/data
     networks:
       - epitrello-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 2s
+      retries: 20
 
   backend:
     build:
@@ -27,7 +32,7 @@ services:
       - "${BACKEND_PORT}:4000"
     environment:
       NODE_ENV: ${NODE_ENV}
-      PORT: 4000
+      PORT: ${BACKEND_PORT}
       DATABASE_URL: ${DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET}
       CORS_ORIGIN: ${CORS_ORIGIN}
@@ -37,7 +42,42 @@ services:
       - ./backend:/app
       - /app/node_modules
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    networks:
+      - epitrello-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:4000/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  backend-tests:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: dev
+    container_name: epitrello-backend-tests-dev
+    restart: unless-stopped
+    environment:
+      NODE_ENV: test
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    command: pnpm run test:cov:watch
+    networks:
+      - epitrello-network
+
+  backend-coverage:
+    image: nginx:alpine
+    container_name: epitrello-backend-coverage-dev
+    restart: unless-stopped
+    ports:
+      - "7331:80"
+    volumes:
+      - ./backend/coverage/lcov-report:/usr/share/nginx/html:ro
     networks:
       - epitrello-network
 
@@ -59,9 +99,35 @@ services:
       - /app/node_modules
       - /app/.next
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - epitrello-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:3000/ || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  prisma-studio:
+    image: node:lts-alpine3.17
+    working_dir: /usr/src/app/backend
+    container_name: epitrello-prisma-studio-dev
+    restart: unless-stopped
+    volumes:
+      - .:/usr/src/app
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    command: npx prisma studio --port 5555 --browser none
+    ports:
+      - "5555:5555"
+    networks:
+      - epitrello-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      backend:
+        condition: service_started
 
   pgadmin:
     image: dpage/pgadmin4:8
@@ -92,7 +158,8 @@ services:
     container_name: epitrello-docs-dev
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
       - "4400:4400"
     networks:

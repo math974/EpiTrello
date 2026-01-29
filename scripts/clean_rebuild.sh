@@ -3,15 +3,19 @@ set -euo pipefail
 
 # Clean Docker resources for the EpiTrello project and rebuild services.
 # Usage:
-#   ./scripts/clean_rebuild.sh [--prod] [--help]
+#   ./scripts/clean_rebuild.sh [--prod] [--full] [--help]
 #
 # Defaults:
 #   compose: docker-compose.dev.yml
 #   env file: .env.dev
+#   volumes: keep
 #
 # With --prod:
 #   compose: docker-compose.prod.yml
 #   env file: .env.prod
+#
+# With --full:
+#   removes volumes as well
 #
 # Requirement: run from the repository root (where docker-compose.*.yml lives).
 
@@ -19,18 +23,21 @@ COMPOSE_FILE="docker-compose.dev.yml"
 PROJECT_PREFIX="epitrello"
 ENV_FILE=".env.dev"
 ENV_FILES=(".env.dev" ".env.dev.example")
+FULL_CLEAN=false
 
 show_help() {
   cat <<EOF
-Usage: $0 [--prod] [--help]
+Usage: $0 [--prod] [--full] [--help]
 
 Options:
   --prod   Use docker-compose.prod.yml with .env.prod
+  --full   Remove volumes (destructive)
   --help   Show this help
 
 Default behavior uses docker-compose.dev.yml and .env.dev.
 The script:
-  - stops/removes containers, volumes, networks with prefix '${PROJECT_PREFIX}'
+  - stops/removes containers and networks with prefix '${PROJECT_PREFIX}'
+  - keeps volumes by default (use --full to remove volumes)
   - rebuilds images without cache
   - starts with docker compose up --build
 EOF
@@ -42,6 +49,9 @@ if [[ $# -gt 0 ]]; then
       COMPOSE_FILE="docker-compose.prod.yml"
       ENV_FILE=".env.prod"
       ENV_FILES=(".env.prod" ".env.prod.example")
+      ;;
+    --full)
+      FULL_CLEAN=true
       ;;
     --help|-h)
       show_help
@@ -60,8 +70,8 @@ if [[ ! -f "${COMPOSE_FILE}" ]]; then
   exit 1
 fi
 
-echo ">> Stopping and removing compose containers/volumes (file: ${COMPOSE_FILE})"
-docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" down -v --remove-orphans || true
+echo ">> Stopping and removing compose containers (file: ${COMPOSE_FILE})"
+docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" down --remove-orphans || true
 
 echo ">> Removing orphan containers with prefix ${PROJECT_PREFIX}"
 docker ps -a --format '{{.ID}} {{.Names}}' | grep -E "${PROJECT_PREFIX}" || true | awk '{print $1}' | xargs -r docker rm -f
@@ -69,8 +79,12 @@ docker ps -a --format '{{.ID}} {{.Names}}' | grep -E "${PROJECT_PREFIX}" || true
 echo ">> Removing project images (prefix ${PROJECT_PREFIX})"
 docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' | grep -E "^${PROJECT_PREFIX}" || true | awk '{print $2}' | xargs -r docker rmi -f
 
+if [[ "${FULL_CLEAN}" == "true" ]]; then
 echo ">> Removing project volumes (prefix ${PROJECT_PREFIX})"
 docker volume ls --format '{{.Name}}' | grep -E "^${PROJECT_PREFIX}" || true | xargs -r docker volume rm
+else
+  echo ">> Skipping volume removal (use --full to remove volumes)"
+fi
 
 echo ">> Removing project networks (prefix ${PROJECT_PREFIX})"
 docker network ls --format '{{.Name}}' | grep -E "^${PROJECT_PREFIX}" || true | xargs -r docker network rm

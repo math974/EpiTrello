@@ -26,6 +26,7 @@ build/
 *.egg-info/
 .next/
 out/
+backend/src/schema.gql
 
 # Environment variables
 .env

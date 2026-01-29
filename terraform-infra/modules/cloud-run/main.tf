@@ -40,7 +40,7 @@ resource "google_cloud_run_service" "this" {
     metadata {
       annotations = merge(
         {
-          "run.googleapis.com/client-name" = "terraform"
+        "run.googleapis.com/client-name" = "terraform"
         },
         local.cloudsql_instances != ""
         ? { "run.googleapis.com/cloudsql-instances" = local.cloudsql_instances }

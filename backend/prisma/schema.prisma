@@ -11,6 +11,8 @@ model User {
   id        String   @id @default(uuid())
   username  String   @unique
   email     String   @unique
+  passwordHash String
+  refreshTokenHash String?
   avatar    String?
   createdAt DateTime @default(now())
   boards    Board[]
@@ -26,6 +28,7 @@ model Board {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
 
 
 

@@ -1,5 +1,7 @@
 # EpiTrello
 
+[![codecov](https://codecov.io/gh/math974/EpiTrello/branch/main/graph/badge.svg)](https://codecov.io/gh/math974/EpiTrello)
+
 A modern Trello clone with a GraphQL API, a Next.js frontend, and a Postgres database.
 
 ## Prerequisites
@@ -22,9 +24,14 @@ When running the dev compose file, you get:
 
 - **Postgres**: `localhost:5432`
 - **Backend (GraphQL API)**: `http://localhost:4000/graphql`
+- **Backend Tests (watch)**: runs unit tests on file change
+- **Backend Coverage (HTML)**: `http://localhost:7331`
 - **Frontend (Next.js)**: `http://localhost:3000`
 - **pgAdmin**: `http://localhost:5050`
 - **Docs (SpectaQL)**: `http://localhost:4400`
+- **Prisma Studio**: `http://localhost:5555`
+
+Prisma Studio is a web UI to browse and edit your database tables during development.
 
 ## Auto Reload (Docker, Development)
 
@@ -36,6 +43,19 @@ When you edit files in `backend/` or `frontend/`, the containers will automatica
 ```bash
 docker compose -f docker-compose.dev.yml --env-file .env.dev up --build
 ```
+
+### Backend Unit Tests (Watch + HTML Coverage)
+
+Start the test watcher:
+
+```bash
+docker compose -f docker-compose.dev.yml --env-file .env.dev up backend-tests
+```
+
+Open the HTML coverage report:
+
+- `http://localhost:7331`
+- Files are generated in `backend/coverage/lcov-report`.
 
 Stop services:
 
@@ -144,6 +164,26 @@ Common variables used by `docker-compose.dev.yml`:
 
 This usually means the database has not been migrated/seeded yet.  
 Run the migrations or seeds from the backend (once they exist).
+
+## Database Migrations (Prisma)
+
+You must run Prisma migrations to create/update database tables after schema changes.
+
+### Docker (recommended)
+```bash
+docker compose -f docker-compose.dev.yml --env-file .env.dev exec backend \
+  npx prisma migrate dev --name init
+```
+
+### Local (no Docker)
+```bash
+cd backend
+export DATABASE_URL="postgresql://user:password@localhost:5432/epitrello?schema=public"
+npx prisma migrate dev --name init
+```
+
+> If your `DATABASE_URL` uses `postgres:5432`, run the migration inside Docker.  
+> `postgres` is the Docker service name, not available locally.
 
 ### Port Already in Use
 
