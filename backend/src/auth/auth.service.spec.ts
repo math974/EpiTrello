@@ -43,6 +43,7 @@ describe('AuthService.register', () => {
       id: 'user-1',
       email: 'test@example.com',
       username: 'testuser',
+      tokenVersion: 0,
     });
 
     bcrypt.hash.mockResolvedValueOnce('password-hash').mockResolvedValueOnce('refresh-hash');
@@ -77,6 +78,7 @@ describe('AuthService.register', () => {
         id: 'user-1',
         email: 'test@example.com',
         username: 'testuser',
+        tokenVersion: 0,
       },
     });
   });
@@ -144,6 +146,7 @@ describe('AuthService.login', () => {
       email: 'test@example.com',
       username: 'testuser',
       passwordHash: 'password-hash',
+      tokenVersion: 0,
     });
 
     bcrypt.compare.mockResolvedValue(true);
@@ -172,6 +175,7 @@ describe('AuthService.login', () => {
         email: 'test@example.com',
         username: 'testuser',
         passwordHash: 'password-hash',
+        tokenVersion: 0,
       },
     });
   });
@@ -195,6 +199,7 @@ describe('AuthService.login', () => {
       email: 'test@example.com',
       username: 'testuser',
       passwordHash: 'password-hash',
+      tokenVersion: 0,
     });
 
     bcrypt.compare.mockResolvedValue(false);
@@ -247,7 +252,7 @@ describe('AuthService.logout', () => {
 
     expect(prisma.user.update).toHaveBeenCalledWith({
       where: { id: 'user-1' },
-      data: { refreshTokenHash: null },
+      data: { refreshTokenHash: null, tokenVersion: { increment: 1 } },
     });
     expect(result).toBe(true);
   });

@@ -15,13 +15,13 @@ export class GqlAuthGuard implements CanActivate {
     const { req } = gqlCtx.getContext();
     const authHeader = req?.headers?.authorization;
 
-    const userId = await this.authService.getUserIdFromAccessToken(authHeader);
-    if (!userId) {
+    const payload = await this.authService.getAccessPayload(authHeader);
+    if (!payload) {
       throw new UnauthorizedException('Unauthorized');
     }
 
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) {
+    const user = await this.prisma.user.findUnique({ where: { id: payload.userId } });
+    if (!user || user.tokenVersion !== payload.tokenVersion) {
       throw new UnauthorizedException('Unauthorized');
     }
 

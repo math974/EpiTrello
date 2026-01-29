@@ -13,6 +13,7 @@ model User {
   email     String   @unique
   passwordHash String
   refreshTokenHash String?
+  tokenVersion Int @default(0)
   avatar    String?
   createdAt DateTime @default(now())
   boards    Board[]
