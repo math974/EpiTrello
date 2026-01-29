@@ -21,7 +21,7 @@ jobs:
           run_install: false
       - name: Install dependencies
         working-directory: backend
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
       - name: Generate Prisma client
         working-directory: backend
         run: pnpm prisma generate
