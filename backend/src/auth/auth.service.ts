@@ -85,6 +85,27 @@ export class AuthService {
     return { ...tokens, user };
   }
 
+  async logout(input: RefreshTokenInput) {
+    const payload = await this.verifyRefreshToken(input.refreshToken);
+    const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
+
+    if (!user || !user.refreshTokenHash) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    const valid = await bcrypt.compare(input.refreshToken, user.refreshTokenHash);
+    if (!valid) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { refreshTokenHash: null },
+    });
+
+    return true;
+  }
+
   async getUserIdFromAccessToken(authHeader?: string) {
     if (!authHeader?.startsWith('Bearer ')) {
       return null;

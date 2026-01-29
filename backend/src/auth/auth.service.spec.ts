@@ -210,4 +210,73 @@ describe('AuthService.login', () => {
   });
 });
 
+describe('AuthService.logout', () => {
+  const prisma = {
+    user: {
+      findUnique: jest.fn(),
+      update: jest.fn(),
+    },
+  };
+
+  const jwt = {
+    signAsync: jest.fn(),
+    verifyAsync: jest.fn(),
+  };
+
+  const config = {
+    get: jest.fn(),
+  };
+
+  const createService = () => new AuthService(prisma as any, jwt as any, config as any);
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('invalidates refresh token in DB', async () => {
+    jwt.verifyAsync.mockResolvedValue({ sub: 'user-1' });
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      refreshTokenHash: 'refresh-hash',
+    });
+    bcrypt.compare.mockResolvedValue(true);
+
+    const service = createService();
+
+    const result = await service.logout({ refreshToken: 'old-refresh' });
+
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: 'user-1' },
+      data: { refreshTokenHash: null },
+    });
+    expect(result).toBe(true);
+  });
+
+  it('throws when refresh token is invalid', async () => {
+    jwt.verifyAsync.mockResolvedValue({ sub: 'user-1' });
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      refreshTokenHash: 'refresh-hash',
+    });
+    bcrypt.compare.mockResolvedValue(false);
+
+    const service = createService();
+
+    await expect(service.logout({ refreshToken: 'bad-refresh' })).rejects.toThrow(
+      new UnauthorizedException('Invalid refresh token')
+    );
+  });
+
+  it('throws when user or refresh hash is missing', async () => {
+    jwt.verifyAsync.mockResolvedValue({ sub: 'user-1' });
+    prisma.user.findUnique.mockResolvedValue(null);
+
+    const service = createService();
+
+    await expect(service.logout({ refreshToken: 'old-refresh' })).rejects.toThrow(
+      new UnauthorizedException('Invalid refresh token')
+    );
+  });
+});
+
 
