@@ -15,11 +15,14 @@ jobs:
         with:
           node-version: '22.14.0'
           cache: 'pnpm'
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
       - name: Install dependencies
         working-directory: backend
-        run: |
-          corepack enable pnpm
-          pnpm install --no-frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
       - name: Run unit tests with coverage
         working-directory: backend
         run: pnpm run test:cov
