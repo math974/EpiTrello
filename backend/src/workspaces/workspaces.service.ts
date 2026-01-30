@@ -41,6 +41,35 @@ export class WorkspacesService {
     });
   }
 
+  async getWorkspace(userId: string, workspaceId: string) {
+    const membership = await this.prisma.workspaceMember.findUnique({
+      where: { userId_workspaceId: { userId, workspaceId } },
+    });
+    if (!membership) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      include: { owner: true },
+    });
+    if (!workspace) {
+      return null;
+    }
+
+    const members = await this.prisma.workspaceMember.findMany({
+      where: { workspaceId },
+      include: { user: true },
+      orderBy: { userId: 'asc' },
+    });
+
+    return {
+      ...workspace,
+      members,
+      boards: [],
+    };
+  }
+
   async updateWorkspace(workspaceId: string, userId: string, name: string) {
     const workspace = await this.prisma.workspace.findUnique({
       where: { id: workspaceId },

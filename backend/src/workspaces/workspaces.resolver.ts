@@ -26,6 +26,12 @@ export class WorkspacesResolver {
     return memberships.map((membership) => membership.workspace);
   }
 
+  @Query(() => WorkspaceModel, { nullable: true })
+  @AuthGuard()
+  workspace(@Args('id') id: string, @Context('user') user: User) {
+    return this.workspacesService.getWorkspace(user.id, id);
+  }
+
   @Mutation(() => WorkspaceModel)
   @AuthGuard()
   async updateWorkspace(
