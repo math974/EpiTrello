@@ -8,6 +8,7 @@ describe('WorkspacesResolver', () => {
     myWorkspaces: jest.fn(),
     getWorkspace: jest.fn(),
     updateWorkspace: jest.fn(),
+    addWorkspaceMember: jest.fn(),
   } as unknown as WorkspacesService;
   const resolver = new WorkspacesResolver(workspacesService);
 
@@ -63,6 +64,26 @@ describe('WorkspacesResolver', () => {
       'Updated Acme'
     );
     expect(result).toBe(updatedWorkspace);
+  });
+
+  it('adds a workspace member for the current user', async () => {
+    const user = { id: 'user-1' } as User;
+    const input = { workspaceId: 'workspace-1', email: 'member@example.com' };
+    const membership = {
+      userId: 'user-2',
+      workspaceId: 'workspace-1',
+      role: 'MEMBER' as const,
+    };
+    workspacesService.addWorkspaceMember = jest.fn().mockResolvedValue(membership);
+
+    const result = await resolver.addWorkspaceMember(input, user);
+
+    expect(workspacesService.addWorkspaceMember).toHaveBeenCalledWith(
+      'workspace-1',
+      'user-1',
+      'member@example.com'
+    );
+    expect(result).toBe(membership);
   });
 });
 

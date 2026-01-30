@@ -1,8 +1,10 @@
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { User } from '@prisma/client';
 import { AuthGuard } from '../common/guards/gql-auth.decorator';
+import { AddWorkspaceMemberInput } from './dto/add-workspace-member.input';
 import { CreateWorkspaceInput } from './dto/create-workspace.input';
 import { UpdateWorkspaceInput } from './dto/update-workspace.input';
+import { WorkspaceMemberModel } from './models/workspace-member.model';
 import { WorkspaceModel } from './models/workspace.model';
 import { WorkspacesService } from './workspaces.service';
 
@@ -39,6 +41,15 @@ export class WorkspacesResolver {
     @Context('user') user: User
   ) {
     return this.workspacesService.updateWorkspace(input.id, user.id, input.name);
+  }
+
+  @Mutation(() => WorkspaceMemberModel)
+  @AuthGuard()
+  async addWorkspaceMember(
+    @Args('input', { type: () => AddWorkspaceMemberInput }) input: AddWorkspaceMemberInput,
+    @Context('user') user: User
+  ) {
+    return this.workspacesService.addWorkspaceMember(input.workspaceId, user.id, input.email);
   }
 }
 

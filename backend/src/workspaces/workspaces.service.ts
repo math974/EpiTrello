@@ -91,5 +91,52 @@ export class WorkspacesService {
       },
     });
   }
+
+  async addWorkspaceMember(workspaceId: string, ownerId: string, email: string) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+    });
+
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    if (workspace.ownerId !== ownerId) {
+      throw new ForbiddenException('Only the workspace owner can add members');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User with this email not found');
+    }
+
+    const existingMember = await this.prisma.workspaceMember.findUnique({
+      where: {
+        userId_workspaceId: {
+          userId: user.id,
+          workspaceId,
+        },
+      },
+    });
+
+    if (existingMember) {
+      throw new ForbiddenException('User is already a member of this workspace');
+    }
+
+    return this.prisma.workspaceMember.create({
+      data: {
+        userId: user.id,
+        workspaceId,
+        role: WorkspaceRole.MEMBER,
+      },
+      include: {
+        user: true,
+        workspace: true,
+      },
+    });
+  }
 }
 
