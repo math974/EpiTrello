@@ -7,6 +7,9 @@ describe('WorkspacesService', () => {
     workspace: {
       create: jest.fn(),
     },
+    workspaceMember: {
+      findMany: jest.fn(),
+    },
   } as unknown as PrismaService;
   const service = new WorkspacesService(prisma);
 
@@ -41,6 +44,32 @@ describe('WorkspacesService', () => {
       },
     });
     expect(result).toBe(workspace);
+  });
+  it('returns workspaces where user is a member', async () => {
+    const memberships = [
+      { workspace: { id: 'workspace-1', name: 'Acme' } },
+      { workspace: { id: 'workspace-2', name: 'Beta' } },
+    ];
+    prisma.workspaceMember.findMany = jest.fn().mockResolvedValue(memberships);
+
+    const result = await service.myWorkspaces('user-1');
+
+    expect(prisma.workspaceMember.findMany).toHaveBeenCalledWith({
+      where: { userId: 'user-1' },
+      include: {
+        workspace: {
+          include: {
+            owner: true,
+          },
+        },
+      },
+      orderBy: {
+        workspace: {
+          createdAt: 'desc',
+        },
+      },
+    });
+    expect(result).toBe(memberships);
   });
 });
 

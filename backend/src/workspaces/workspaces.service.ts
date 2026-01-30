@@ -23,5 +23,22 @@ export class WorkspacesService {
       },
     });
   }
+  myWorkspaces(userId: string) {
+    return this.prisma.workspaceMember.findMany({
+      where: { userId },
+      include: {
+        workspace: {
+          include: {
+            owner: true,
+          },
+        },
+      },
+      orderBy: {
+        workspace: {
+          createdAt: 'desc',
+        },
+      },
+    });
+  }
 }
 
