@@ -91,5 +91,28 @@ export class WorkspacesService {
       },
     });
   }
+
+  async deleteWorkspace(workspaceId: string, userId: string) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+    });
+
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    if (workspace.ownerId !== userId) {
+      throw new ForbiddenException('Only the workspace owner can delete it');
+    }
+
+    // Delete workspace - WorkspaceMember will be deleted in cascade (onDelete: Cascade)
+    // Note: Boards are not yet linked to workspace in schema, so they won't be deleted automatically
+    // This will need to be handled when Board model is updated to include workspaceId
+    await this.prisma.workspace.delete({
+      where: { id: workspaceId },
+    });
+
+    return true;
+  }
 }
 
