@@ -34,5 +34,16 @@ describe('WorkspacesResolver', () => {
     expect(workspacesService.myWorkspaces).toHaveBeenCalledWith('user-1');
     expect(result).toEqual([{ id: 'workspace-1' }, { id: 'workspace-2' }]);
   });
+
+  it('returns workspace details for the current user', async () => {
+    const user = { id: 'user-1' } as User;
+    const workspace = { id: 'workspace-1', name: 'Acme' };
+    workspacesService.getWorkspace = jest.fn().mockResolvedValue(workspace);
+
+    const result = await resolver.workspace('workspace-1', user);
+
+    expect(workspacesService.getWorkspace).toHaveBeenCalledWith('user-1', 'workspace-1');
+    expect(result).toBe(workspace);
+  });
 });
 
