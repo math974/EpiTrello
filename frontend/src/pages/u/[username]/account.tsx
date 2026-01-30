@@ -1,20 +1,35 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/shadcn/ui/card';
 import { Button } from '@/components/shadcn/ui/button';
 import { Input } from '@/components/shadcn/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/shadcn/ui/tabs';
 
 const DEFAULT_USERNAME = 'utilisateur';
 
 export default function AccountSettingsPage() {
   const router = useRouter();
+  const [activeSection, setActiveSection] = useState('profile');
   const username = useMemo(() => {
     const value = router.query.username;
     if (typeof value === 'string' && value.trim().length > 0) return value;
     return DEFAULT_USERNAME;
   }, [router.query.username]);
+
+  useEffect(() => {
+    const updateActive = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash === 'profile' || hash === 'activity' || hash === 'settings') {
+        setActiveSection(hash);
+        return;
+      }
+      setActiveSection('profile');
+    };
+
+    updateActive();
+    window.addEventListener('hashchange', updateActive);
+    return () => window.removeEventListener('hashchange', updateActive);
+  }, []);
 
   return (
     <div className="min-h-screen bg-trello-bg-light">
@@ -35,13 +50,34 @@ export default function AccountSettingsPage() {
           <div className="rounded-xl bg-white p-4 shadow-sm">
             <p className="text-xs uppercase tracking-[0.25em] text-trello-gray">Navigation</p>
             <nav className="mt-4 space-y-2 text-sm">
-              <a className="block rounded-lg bg-trello-bg-gray px-3 py-2 font-medium text-trello-navy" href="#profile">
+              <a
+                className={`block rounded-lg px-3 py-2 font-medium ${
+                  activeSection === 'profile'
+                    ? 'bg-trello-bg-gray text-trello-navy'
+                    : 'text-trello-gray hover:bg-trello-bg-gray'
+                }`}
+                href="#profile"
+              >
                 Profil et visibilite
               </a>
-              <a className="block rounded-lg px-3 py-2 text-trello-gray hover:bg-trello-bg-gray" href="#activity">
+              <a
+                className={`block rounded-lg px-3 py-2 ${
+                  activeSection === 'activity'
+                    ? 'bg-trello-bg-gray text-trello-navy font-medium'
+                    : 'text-trello-gray hover:bg-trello-bg-gray'
+                }`}
+                href="#activity"
+              >
                 Activite
               </a>
-              <a className="block rounded-lg px-3 py-2 text-trello-gray hover:bg-trello-bg-gray" href="#settings">
+              <a
+                className={`block rounded-lg px-3 py-2 ${
+                  activeSection === 'settings'
+                    ? 'bg-trello-bg-gray text-trello-navy font-medium'
+                    : 'text-trello-gray hover:bg-trello-bg-gray'
+                }`}
+                href="#settings"
+              >
                 Parametres
               </a>
             </nav>
@@ -52,77 +88,69 @@ export default function AccountSettingsPage() {
         </aside>
 
         <section className="space-y-6">
-          <Tabs defaultValue="profile">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="profile">Profil</TabsTrigger>
-              <TabsTrigger value="activity">Activite</TabsTrigger>
-              <TabsTrigger value="settings">Parametres</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="profile" id="profile" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Profil et visibilite</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="text-sm font-medium text-trello-navy">Nom d utilisateur</label>
-                      <Input className="mt-2" defaultValue={username} />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-trello-navy">Email</label>
-                      <Input className="mt-2" type="email" placeholder="vous@exemple.com" />
-                    </div>
+          {activeSection === 'profile' && (
+            <Card id="profile">
+              <CardHeader>
+                <CardTitle>Profil et visibilite</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="text-sm font-medium text-trello-navy">Nom d utilisateur</label>
+                    <Input className="mt-2" defaultValue={username} />
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-trello-navy">Bio</label>
-                    <Input className="mt-2" placeholder="Parlez de vous en une phrase" />
+                    <label className="text-sm font-medium text-trello-navy">Email</label>
+                    <Input className="mt-2" type="email" placeholder="vous@exemple.com" />
                   </div>
-                  <div className="flex justify-end">
-                    <Button className="bg-trello-blue hover:bg-trello-blue-dark">Enregistrer</Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-trello-navy">Bio</label>
+                  <Input className="mt-2" placeholder="Parlez de vous en une phrase" />
+                </div>
+                <div className="flex justify-end">
+                  <Button className="bg-trello-blue hover:bg-trello-blue-dark">Enregistrer</Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-            <TabsContent value="activity" id="activity" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Activite recente</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm text-trello-gray">
-                  <div className="rounded-lg bg-trello-bg-gray px-3 py-2">Vous avez cree un tableau "Projet mobile".</div>
-                  <div className="rounded-lg bg-trello-bg-gray px-3 py-2">Vous avez deplace une carte vers "Fait".</div>
-                  <div className="rounded-lg bg-trello-bg-gray px-3 py-2">Vous avez invite une equipe.</div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+          {activeSection === 'activity' && (
+            <Card id="activity">
+              <CardHeader>
+                <CardTitle>Activite recente</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm text-trello-gray">
+                <div className="rounded-lg bg-trello-bg-gray px-3 py-2">Vous avez cree un tableau \"Projet mobile\".</div>
+                <div className="rounded-lg bg-trello-bg-gray px-3 py-2">Vous avez deplace une carte vers \"Fait\".</div>
+                <div className="rounded-lg bg-trello-bg-gray px-3 py-2">Vous avez invite une equipe.</div>
+              </CardContent>
+            </Card>
+          )}
 
-            <TabsContent value="settings" id="settings" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Parametres du compte</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="text-sm font-medium text-trello-navy">Mot de passe</label>
-                      <Input className="mt-2" type="password" placeholder="Nouveau mot de passe" />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-trello-navy">Confirmation</label>
-                      <Input className="mt-2" type="password" placeholder="Confirmez le mot de passe" />
-                    </div>
+          {activeSection === 'settings' && (
+            <Card id="settings">
+              <CardHeader>
+                <CardTitle>Parametres du compte</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="text-sm font-medium text-trello-navy">Mot de passe</label>
+                    <Input className="mt-2" type="password" placeholder="Nouveau mot de passe" />
                   </div>
-                  <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                    <span>Les changements sont uniquement visuels pour le moment.</span>
-                    <Button variant="outline">Mettre a jour</Button>
+                  <div>
+                    <label className="text-sm font-medium text-trello-navy">Confirmation</label>
+                    <Input className="mt-2" type="password" placeholder="Confirmez le mot de passe" />
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+                </div>
+                <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  <span>Les changements sont uniquement visuels pour le moment.</span>
+                  <Button variant="outline">Mettre a jour</Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </section>
       </main>
     </div>
