@@ -19,7 +19,7 @@ export default function AccountSettingsPage() {
   useEffect(() => {
     const updateActive = () => {
       const hash = window.location.hash.replace('#', '');
-      if (hash === 'profile' || hash === 'activity' || hash === 'settings') {
+      if (hash === 'profile' || hash === 'activity' || hash === 'settings' || hash === 'accessibility') {
         setActiveSection(hash);
         return;
       }
@@ -48,7 +48,7 @@ export default function AccountSettingsPage() {
       <main className="mx-auto grid max-w-6xl gap-6 px-6 py-8 md:grid-cols-[240px,1fr]">
         <aside className="space-y-2">
           <div className="rounded-xl bg-white p-4 shadow-sm">
-            <p className="text-xs uppercase tracking-[0.25em] text-trello-gray">Navigation</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-trello-gray/70 whitespace-nowrap">Paramètres personnels</p>
             <nav className="mt-4 space-y-2 text-sm">
               <a
                 className={`block rounded-lg px-3 py-2 font-medium ${
@@ -58,7 +58,7 @@ export default function AccountSettingsPage() {
                 }`}
                 href="#profile"
               >
-                Profil et visibilite
+                Profil et visibilité
               </a>
               <a
                 className={`block rounded-lg px-3 py-2 ${
@@ -79,6 +79,16 @@ export default function AccountSettingsPage() {
                 href="#settings"
               >
                 Parametres
+              </a>
+              <a
+                className={`block rounded-lg px-3 py-2 ${
+                  activeSection === 'accessibility'
+                    ? 'bg-trello-bg-gray text-trello-navy font-medium'
+                    : 'text-trello-gray hover:bg-trello-bg-gray'
+                }`}
+                href="#accessibility"
+              >
+                Accessibilité
               </a>
             </nav>
           </div>
@@ -131,9 +141,13 @@ export default function AccountSettingsPage() {
           {activeSection === 'settings' && (
             <Card id="settings">
               <CardHeader>
-                <CardTitle>Parametres du compte</CardTitle>
+                <CardTitle>Paramètres du compte</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-trello-navy">Email</label>
+                  <Input className="mt-2" type="email" placeholder="Nouveau email" />
+                </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <label className="text-sm font-medium text-trello-navy">Mot de passe</label>
@@ -147,6 +161,38 @@ export default function AccountSettingsPage() {
                 <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                   <span>Les changements sont uniquement visuels pour le moment.</span>
                   <Button variant="outline">Mettre a jour</Button>
+                </div>
+                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-900">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="font-semibold">Zone dangereuse</p>
+                      <p className="text-xs text-red-700">
+                        Supprimer votre compte effacera toutes vos donnees. Cette action est definitive.
+                      </p>
+                    </div>
+                    <Button className="bg-red-600 text-white hover:bg-red-700">Supprimer le compte</Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {activeSection === 'accessibility' && (
+            <Card id="accessibility">
+              <CardHeader>
+                <CardTitle>Accessibilite</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-trello-navy">Langue</label>
+                  <select
+                    className="mt-2 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-trello-blue"
+                    defaultValue="fr"
+                  >
+                    <option value="fr">Francais</option>
+                    <option value="en">English</option>
+                    <option value="es">Espanol</option>
+                  </select>
                 </div>
               </CardContent>
             </Card>
