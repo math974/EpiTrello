@@ -8,6 +8,7 @@ import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthContextService } from './auth/auth.context';
 import { validateEnv } from './config/env.validation';
+import { WorkspacesModule } from './workspaces/workspaces.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { validateEnv } from './config/env.validation';
     }),
     PrismaModule,
     AuthModule,
+    WorkspacesModule,
     HealthModule,
   ],
 })
