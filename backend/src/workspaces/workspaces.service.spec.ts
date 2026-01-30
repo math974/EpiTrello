@@ -14,6 +14,10 @@ describe('WorkspacesService', () => {
     workspaceMember: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
+      create: jest.fn(),
+    },
+    user: {
+      findUnique: jest.fn(),
     },
   } as unknown as PrismaService;
   const service = new WorkspacesService(prisma);
@@ -210,6 +214,128 @@ describe('WorkspacesService', () => {
         ForbiddenException
       );
       expect(prisma.workspace.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('addWorkspaceMember', () => {
+    it('adds a user as member when owner adds them', async () => {
+      const workspace = {
+        id: 'workspace-1',
+        name: 'Acme',
+        ownerId: 'user-1',
+      };
+      const user = {
+        id: 'user-2',
+        email: 'member@example.com',
+        username: 'Member',
+      };
+      const membership = {
+        userId: 'user-2',
+        workspaceId: 'workspace-1',
+        role: WorkspaceRole.MEMBER,
+        user,
+        workspace,
+      };
+      prisma.workspace.findUnique = jest.fn().mockResolvedValue(workspace);
+      prisma.user.findUnique = jest.fn().mockResolvedValue(user);
+      prisma.workspaceMember.findUnique = jest.fn().mockResolvedValue(null);
+      prisma.workspaceMember.create = jest.fn().mockResolvedValue(membership);
+
+      const result = await service.addWorkspaceMember('workspace-1', 'user-1', 'member@example.com');
+
+      expect(prisma.workspace.findUnique).toHaveBeenCalledWith({
+        where: { id: 'workspace-1' },
+      });
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { email: 'member@example.com' },
+      });
+      expect(prisma.workspaceMember.findUnique).toHaveBeenCalledWith({
+        where: {
+          userId_workspaceId: {
+            userId: 'user-2',
+            workspaceId: 'workspace-1',
+          },
+        },
+      });
+      expect(prisma.workspaceMember.create).toHaveBeenCalledWith({
+        data: {
+          userId: 'user-2',
+          workspaceId: 'workspace-1',
+          role: WorkspaceRole.MEMBER,
+        },
+        include: {
+          user: true,
+          workspace: true,
+        },
+      });
+      expect(result).toBe(membership);
+    });
+
+    it('throws NotFoundException when workspace does not exist', async () => {
+      prisma.workspace.findUnique = jest.fn().mockResolvedValue(null);
+
+      await expect(
+        service.addWorkspaceMember('workspace-1', 'user-1', 'member@example.com')
+      ).rejects.toThrow(NotFoundException);
+      expect(prisma.user.findUnique).not.toHaveBeenCalled();
+      expect(prisma.workspaceMember.create).not.toHaveBeenCalled();
+    });
+
+    it('throws ForbiddenException when user is not owner', async () => {
+      const workspace = {
+        id: 'workspace-1',
+        name: 'Acme',
+        ownerId: 'user-2',
+      };
+      prisma.workspace.findUnique = jest.fn().mockResolvedValue(workspace);
+
+      await expect(
+        service.addWorkspaceMember('workspace-1', 'user-1', 'member@example.com')
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.user.findUnique).not.toHaveBeenCalled();
+      expect(prisma.workspaceMember.create).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when user email not found', async () => {
+      const workspace = {
+        id: 'workspace-1',
+        name: 'Acme',
+        ownerId: 'user-1',
+      };
+      prisma.workspace.findUnique = jest.fn().mockResolvedValue(workspace);
+      prisma.user.findUnique = jest.fn().mockResolvedValue(null);
+
+      await expect(
+        service.addWorkspaceMember('workspace-1', 'user-1', 'notfound@example.com')
+      ).rejects.toThrow(NotFoundException);
+      expect(prisma.workspaceMember.findUnique).not.toHaveBeenCalled();
+      expect(prisma.workspaceMember.create).not.toHaveBeenCalled();
+    });
+
+    it('throws ForbiddenException when user is already a member', async () => {
+      const workspace = {
+        id: 'workspace-1',
+        name: 'Acme',
+        ownerId: 'user-1',
+      };
+      const user = {
+        id: 'user-2',
+        email: 'member@example.com',
+        username: 'Member',
+      };
+      const existingMember = {
+        userId: 'user-2',
+        workspaceId: 'workspace-1',
+        role: WorkspaceRole.MEMBER,
+      };
+      prisma.workspace.findUnique = jest.fn().mockResolvedValue(workspace);
+      prisma.user.findUnique = jest.fn().mockResolvedValue(user);
+      prisma.workspaceMember.findUnique = jest.fn().mockResolvedValue(existingMember);
+
+      await expect(
+        service.addWorkspaceMember('workspace-1', 'user-1', 'member@example.com')
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.workspaceMember.create).not.toHaveBeenCalled();
     });
   });
 });
