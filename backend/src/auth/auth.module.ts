@@ -8,6 +8,6 @@ import { GqlAuthGuard } from '../common/guards/gql-auth.guard';
 @Module({
   imports: [JwtModule.register({})],
   providers: [AuthResolver, AuthService, AuthContextService, GqlAuthGuard],
-  exports: [AuthContextService, GqlAuthGuard],
+  exports: [AuthContextService, AuthService, GqlAuthGuard],
 })
 export class AuthModule {}
