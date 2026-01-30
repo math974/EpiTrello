@@ -9,6 +9,7 @@ describe('WorkspacesService', () => {
       create: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
+      delete: jest.fn(),
     },
     workspaceMember: {
       findMany: jest.fn(),
@@ -168,6 +169,51 @@ describe('WorkspacesService', () => {
         ForbiddenException
       );
       expect(prisma.workspace.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteWorkspace', () => {
+    it('deletes workspace when user is owner', async () => {
+      const workspace = {
+        id: 'workspace-1',
+        name: 'Acme',
+        ownerId: 'user-1',
+      };
+      prisma.workspace.findUnique = jest.fn().mockResolvedValue(workspace);
+      prisma.workspace.delete = jest.fn().mockResolvedValue(workspace);
+
+      const result = await service.deleteWorkspace('workspace-1', 'user-1');
+
+      expect(prisma.workspace.findUnique).toHaveBeenCalledWith({
+        where: { id: 'workspace-1' },
+      });
+      expect(prisma.workspace.delete).toHaveBeenCalledWith({
+        where: { id: 'workspace-1' },
+      });
+      expect(result).toBe(true);
+    });
+
+    it('throws NotFoundException when workspace does not exist', async () => {
+      prisma.workspace.findUnique = jest.fn().mockResolvedValue(null);
+
+      await expect(service.deleteWorkspace('workspace-1', 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+      expect(prisma.workspace.delete).not.toHaveBeenCalled();
+    });
+
+    it('throws ForbiddenException when user is not owner', async () => {
+      const workspace = {
+        id: 'workspace-1',
+        name: 'Acme',
+        ownerId: 'user-2',
+      };
+      prisma.workspace.findUnique = jest.fn().mockResolvedValue(workspace);
+
+      await expect(service.deleteWorkspace('workspace-1', 'user-1')).rejects.toThrow(
+        ForbiddenException
+      );
+      expect(prisma.workspace.delete).not.toHaveBeenCalled();
     });
   });
 

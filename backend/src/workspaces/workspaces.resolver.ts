@@ -43,6 +43,12 @@ export class WorkspacesResolver {
     return this.workspacesService.updateWorkspace(input.id, user.id, input.name);
   }
 
+  @Mutation(() => Boolean)
+  @AuthGuard()
+  async deleteWorkspace(@Args('id') id: string, @Context('user') user: User) {
+    return this.workspacesService.deleteWorkspace(id, user.id);
+  }
+
   @Mutation(() => WorkspaceMemberModel)
   @AuthGuard()
   async addWorkspaceMember(
