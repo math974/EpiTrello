@@ -2,6 +2,7 @@ import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { User } from '@prisma/client';
 import { AuthGuard } from '../common/guards/gql-auth.decorator';
 import { CreateWorkspaceInput } from './dto/create-workspace.input';
+import { UpdateWorkspaceInput } from './dto/update-workspace.input';
 import { WorkspaceModel } from './models/workspace.model';
 import { WorkspacesService } from './workspaces.service';
 
@@ -23,6 +24,15 @@ export class WorkspacesResolver {
   async myWorkspaces(@Context('user') user: User) {
     const memberships = await this.workspacesService.myWorkspaces(user.id);
     return memberships.map((membership) => membership.workspace);
+  }
+
+  @Mutation(() => WorkspaceModel)
+  @AuthGuard()
+  async updateWorkspace(
+    @Args('input', { type: () => UpdateWorkspaceInput }) input: UpdateWorkspaceInput,
+    @Context('user') user: User
+  ) {
+    return this.workspacesService.updateWorkspace(input.id, user.id, input.name);
   }
 }
 

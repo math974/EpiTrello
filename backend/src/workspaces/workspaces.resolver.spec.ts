@@ -5,6 +5,8 @@ import { WorkspacesService } from './workspaces.service';
 describe('WorkspacesResolver', () => {
   const workspacesService = {
     createWorkspace: jest.fn(),
+    myWorkspaces: jest.fn(),
+    updateWorkspace: jest.fn(),
   } as unknown as WorkspacesService;
   const resolver = new WorkspacesResolver(workspacesService);
 
@@ -33,6 +35,22 @@ describe('WorkspacesResolver', () => {
 
     expect(workspacesService.myWorkspaces).toHaveBeenCalledWith('user-1');
     expect(result).toEqual([{ id: 'workspace-1' }, { id: 'workspace-2' }]);
+  });
+
+  it('updates workspace for the current user', async () => {
+    const user = { id: 'user-1' } as User;
+    const input = { id: 'workspace-1', name: 'Updated Acme' };
+    const updatedWorkspace = { id: 'workspace-1', name: 'Updated Acme' };
+    workspacesService.updateWorkspace = jest.fn().mockResolvedValue(updatedWorkspace);
+
+    const result = await resolver.updateWorkspace(input, user);
+
+    expect(workspacesService.updateWorkspace).toHaveBeenCalledWith(
+      'workspace-1',
+      'user-1',
+      'Updated Acme'
+    );
+    expect(result).toBe(updatedWorkspace);
   });
 });
 
