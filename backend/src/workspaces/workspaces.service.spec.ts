@@ -1,3 +1,4 @@
+import { ForbiddenException } from '@nestjs/common';
 import { WorkspaceRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { WorkspacesService } from './workspaces.service';
@@ -6,9 +7,11 @@ describe('WorkspacesService', () => {
   const prisma = {
     workspace: {
       create: jest.fn(),
+      findUnique: jest.fn(),
     },
     workspaceMember: {
       findMany: jest.fn(),
+      findUnique: jest.fn(),
     },
   } as unknown as PrismaService;
   const service = new WorkspacesService(prisma);
@@ -70,6 +73,43 @@ describe('WorkspacesService', () => {
       },
     });
     expect(result).toBe(memberships);
+  });
+
+  it('rejects access when user is not a workspace member', async () => {
+    prisma.workspaceMember.findUnique = jest.fn().mockResolvedValue(null);
+
+    await expect(service.getWorkspace('user-1', 'workspace-1')).rejects.toBeInstanceOf(
+      ForbiddenException
+    );
+  });
+
+  it('returns workspace details when user is a member', async () => {
+    const workspace = { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' };
+    prisma.workspaceMember.findUnique = jest.fn().mockResolvedValue({ userId: 'user-1' });
+    prisma.workspace.findUnique = jest.fn().mockResolvedValue(workspace);
+    prisma.workspaceMember.findMany = jest
+      .fn()
+      .mockResolvedValue([{ userId: 'user-1', workspaceId: 'workspace-1' }]);
+
+    const result = await service.getWorkspace('user-1', 'workspace-1');
+
+    expect(prisma.workspaceMember.findUnique).toHaveBeenCalledWith({
+      where: { userId_workspaceId: { userId: 'user-1', workspaceId: 'workspace-1' } },
+    });
+    expect(prisma.workspace.findUnique).toHaveBeenCalledWith({
+      where: { id: 'workspace-1' },
+      include: { owner: true },
+    });
+    expect(prisma.workspaceMember.findMany).toHaveBeenCalledWith({
+      where: { workspaceId: 'workspace-1' },
+      include: { user: true },
+      orderBy: { userId: 'asc' },
+    });
+    expect(result).toEqual({
+      ...workspace,
+      members: [{ userId: 'user-1', workspaceId: 'workspace-1' }],
+      boards: [],
+    });
   });
 });
 
