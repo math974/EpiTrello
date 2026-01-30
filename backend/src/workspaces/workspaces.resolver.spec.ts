@@ -21,7 +21,6 @@ describe('WorkspacesResolver', () => {
 
     expect(workspacesService.createWorkspace).toHaveBeenCalledWith('user-1', 'Acme');
   });
-
   it('returns workspaces for the current user', async () => {
     const user = { id: 'user-1' } as User;
     const memberships = [

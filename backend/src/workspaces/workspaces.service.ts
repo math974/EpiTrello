@@ -23,7 +23,6 @@ export class WorkspacesService {
       },
     });
   }
-
   myWorkspaces(userId: string) {
     return this.prisma.workspaceMember.findMany({
       where: { userId },

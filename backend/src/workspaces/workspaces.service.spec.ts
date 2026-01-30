@@ -45,7 +45,6 @@ describe('WorkspacesService', () => {
     });
     expect(result).toBe(workspace);
   });
-
   it('returns workspaces where user is a member', async () => {
     const memberships = [
       { workspace: { id: 'workspace-1', name: 'Acme' } },
