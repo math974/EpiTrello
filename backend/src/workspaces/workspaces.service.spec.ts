@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { WorkspaceRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { WorkspacesService } from './workspaces.service';
@@ -8,6 +8,7 @@ describe('WorkspacesService', () => {
     workspace: {
       create: jest.fn(),
       findUnique: jest.fn(),
+      update: jest.fn(),
     },
     workspaceMember: {
       findMany: jest.fn(),
@@ -109,6 +110,60 @@ describe('WorkspacesService', () => {
       ...workspace,
       members: [{ userId: 'user-1', workspaceId: 'workspace-1' }],
       boards: [],
+    });
+  });
+
+  describe('updateWorkspace', () => {
+    it('updates workspace name when user is owner', async () => {
+      const workspace = {
+        id: 'workspace-1',
+        name: 'Acme',
+        ownerId: 'user-1',
+      };
+      const updatedWorkspace = {
+        ...workspace,
+        name: 'Updated Acme',
+        owner: { id: 'user-1', username: 'Owner', email: 'owner@example.com' },
+      };
+      prisma.workspace.findUnique = jest.fn().mockResolvedValue(workspace);
+      prisma.workspace.update = jest.fn().mockResolvedValue(updatedWorkspace);
+
+      const result = await service.updateWorkspace('workspace-1', 'user-1', 'Updated Acme');
+
+      expect(prisma.workspace.findUnique).toHaveBeenCalledWith({
+        where: { id: 'workspace-1' },
+      });
+      expect(prisma.workspace.update).toHaveBeenCalledWith({
+        where: { id: 'workspace-1' },
+        data: { name: 'Updated Acme' },
+        include: {
+          owner: true,
+        },
+      });
+      expect(result).toBe(updatedWorkspace);
+    });
+
+    it('throws NotFoundException when workspace does not exist', async () => {
+      prisma.workspace.findUnique = jest.fn().mockResolvedValue(null);
+
+      await expect(service.updateWorkspace('workspace-1', 'user-1', 'New Name')).rejects.toThrow(
+        NotFoundException
+      );
+      expect(prisma.workspace.update).not.toHaveBeenCalled();
+    });
+
+    it('throws ForbiddenException when user is not owner', async () => {
+      const workspace = {
+        id: 'workspace-1',
+        name: 'Acme',
+        ownerId: 'user-2',
+      };
+      prisma.workspace.findUnique = jest.fn().mockResolvedValue(workspace);
+
+      await expect(service.updateWorkspace('workspace-1', 'user-1', 'New Name')).rejects.toThrow(
+        ForbiddenException
+      );
+      expect(prisma.workspace.update).not.toHaveBeenCalled();
     });
   });
 });
