@@ -3,6 +3,7 @@ import { User } from '@prisma/client';
 import { AuthGuard } from '../common/guards/gql-auth.decorator';
 import { AddWorkspaceMemberInput } from './dto/add-workspace-member.input';
 import { CreateWorkspaceInput } from './dto/create-workspace.input';
+import { RemoveWorkspaceMemberInput } from './dto/remove-workspace-member.input';
 import { UpdateWorkspaceInput } from './dto/update-workspace.input';
 import { WorkspaceMemberModel } from './models/workspace-member.model';
 import { WorkspaceModel } from './models/workspace.model';
@@ -56,6 +57,15 @@ export class WorkspacesResolver {
     @Context('user') user: User
   ) {
     return this.workspacesService.addWorkspaceMember(input.workspaceId, user.id, input.email);
+  }
+
+  @Mutation(() => Boolean)
+  @AuthGuard()
+  async removeWorkspaceMember(
+    @Args('input', { type: () => RemoveWorkspaceMemberInput }) input: RemoveWorkspaceMemberInput,
+    @Context('user') user: User
+  ) {
+    return this.workspacesService.removeWorkspaceMember(input.workspaceId, user.id, input.userId);
   }
 }
 

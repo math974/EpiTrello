@@ -10,6 +10,7 @@ describe('WorkspacesResolver', () => {
     updateWorkspace: jest.fn(),
     deleteWorkspace: jest.fn(),
     addWorkspaceMember: jest.fn(),
+    removeWorkspaceMember: jest.fn(),
   } as unknown as WorkspacesService;
   const resolver = new WorkspacesResolver(workspacesService);
 
@@ -95,6 +96,21 @@ describe('WorkspacesResolver', () => {
       'member@example.com'
     );
     expect(result).toBe(membership);
+  });
+
+  it('removes a workspace member for the current user', async () => {
+    const user = { id: 'user-1' } as User;
+    const input = { workspaceId: 'workspace-1', userId: 'user-2' };
+    workspacesService.removeWorkspaceMember = jest.fn().mockResolvedValue(true);
+
+    const result = await resolver.removeWorkspaceMember(input, user);
+
+    expect(workspacesService.removeWorkspaceMember).toHaveBeenCalledWith(
+      'workspace-1',
+      'user-1',
+      'user-2'
+    );
+    expect(result).toBe(true);
   });
 });
 
