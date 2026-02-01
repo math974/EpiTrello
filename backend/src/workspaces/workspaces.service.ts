@@ -161,5 +161,57 @@ export class WorkspacesService {
       },
     });
   }
+
+  async removeWorkspaceMember(workspaceId: string, ownerId: string, userIdToRemove: string) {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+    });
+
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    if (workspace.ownerId !== ownerId) {
+      throw new ForbiddenException('Only the workspace owner can remove members');
+    }
+
+    const memberToRemove = await this.prisma.workspaceMember.findUnique({
+      where: {
+        userId_workspaceId: {
+          userId: userIdToRemove,
+          workspaceId,
+        },
+      },
+    });
+
+    if (!memberToRemove) {
+      throw new NotFoundException('User is not a member of this workspace');
+    }
+
+    // Check if this is the last OWNER
+    if (memberToRemove.role === WorkspaceRole.OWNER) {
+      const ownerCount = await this.prisma.workspaceMember.count({
+        where: {
+          workspaceId,
+          role: WorkspaceRole.OWNER,
+        },
+      });
+
+      if (ownerCount <= 1) {
+        throw new ForbiddenException('Cannot remove the last owner of the workspace');
+      }
+    }
+
+    await this.prisma.workspaceMember.delete({
+      where: {
+        userId_workspaceId: {
+          userId: userIdToRemove,
+          workspaceId,
+        },
+      },
+    });
+
+    return true;
+  }
 }
 
