@@ -105,9 +105,7 @@ export class WorkspacesService {
       throw new ForbiddenException('Only the workspace owner can delete it');
     }
 
-    // Delete workspace - WorkspaceMember will be deleted in cascade (onDelete: Cascade)
-    // Note: Boards are not yet linked to workspace in schema, so they won't be deleted automatically
-    // This will need to be handled when Board model is updated to include workspaceId
+    // Delete workspace - WorkspaceMember and Boards will be deleted in cascade (onDelete: Cascade)
     await this.prisma.workspace.delete({
       where: { id: workspaceId },
     });

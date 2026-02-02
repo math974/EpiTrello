@@ -17,6 +17,9 @@ export class BoardModel {
   @Field()
   ownerId!: string;
 
+  @Field(() => ID)
+  workspaceId!: string;
+
   @Field()
   createdAt!: Date;
 
