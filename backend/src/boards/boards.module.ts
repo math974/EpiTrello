@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { PrismaModule } from '../prisma/prisma.module';
+import { WorkspacesModule } from '../workspaces/workspaces.module';
 import { BoardsResolver } from './boards.resolver';
 import { BoardsService } from './boards.service';
 
 @Module({
-  imports: [PrismaModule, AuthModule],
+  imports: [PrismaModule, AuthModule, WorkspacesModule],
   providers: [BoardsService, BoardsResolver],
   exports: [BoardsService],
 })

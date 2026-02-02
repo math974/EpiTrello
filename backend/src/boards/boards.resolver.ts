@@ -1,4 +1,4 @@
-import { Args, Context, Mutation, Resolver } from '@nestjs/graphql';
+import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { User } from '@prisma/client';
 import { AuthGuard } from '../common/guards/gql-auth.decorator';
 import { CreateBoardInput } from './dto/create-board.input';
@@ -16,6 +16,15 @@ export class BoardsResolver {
     @Context('user') user: User
   ) {
     return this.boardsService.createBoard(input.workspaceId, input.title, user.id);
+  }
+
+  @Query(() => [BoardModel])
+  @AuthGuard()
+  async workspaceBoards(
+    @Args('workspaceId') workspaceId: string,
+    @Context('user') user: User
+  ) {
+    return this.boardsService.workspaceBoards(workspaceId, user.id);
   }
 }
 

@@ -1,9 +1,13 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { WorkspacesService } from '../workspaces/workspaces.service';
 
 @Injectable()
 export class BoardsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly workspacesService: WorkspacesService
+  ) {}
 
   async createBoard(workspaceId: string, title: string, userId: string) {
     // Validate workspaceId is provided
@@ -44,6 +48,28 @@ export class BoardsService {
       include: {
         owner: true,
         workspace: true,
+      },
+    });
+  }
+
+  async workspaceBoards(workspaceId: string, userId: string) {
+    // Validate workspaceId is provided
+    if (!workspaceId || workspaceId.trim() === '') {
+      throw new NotFoundException('Workspace ID is required');
+    }
+
+    // Check if user is a member of the workspace (throws ForbiddenException if not)
+    await this.workspacesService.requireWorkspaceAccess(workspaceId, userId);
+
+    // Return all boards for this workspace
+    return this.prisma.board.findMany({
+      where: { workspaceId },
+      include: {
+        owner: true,
+        workspace: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
       },
     });
   }
