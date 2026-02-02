@@ -75,6 +75,24 @@ describe('BoardsService', () => {
       expect(result).toBe(board);
     });
 
+    it('throws NotFoundException when workspaceId is empty', async () => {
+      await expect(service.createBoard('', 'My Board', 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+      expect(prisma.workspace.findUnique).not.toHaveBeenCalled();
+      expect(prisma.workspaceMember.findUnique).not.toHaveBeenCalled();
+      expect(prisma.board.create).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when workspaceId is whitespace only', async () => {
+      await expect(service.createBoard('   ', 'My Board', 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+      expect(prisma.workspace.findUnique).not.toHaveBeenCalled();
+      expect(prisma.workspaceMember.findUnique).not.toHaveBeenCalled();
+      expect(prisma.board.create).not.toHaveBeenCalled();
+    });
+
     it('throws NotFoundException when workspace does not exist', async () => {
       prisma.workspace.findUnique = jest.fn().mockResolvedValue(null);
 

@@ -6,6 +6,11 @@ export class BoardsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async createBoard(workspaceId: string, title: string, userId: string) {
+    // Validate workspaceId is provided
+    if (!workspaceId || workspaceId.trim() === '') {
+      throw new NotFoundException('Workspace ID is required');
+    }
+
     // Check if workspace exists
     const workspace = await this.prisma.workspace.findUnique({
       where: { id: workspaceId },

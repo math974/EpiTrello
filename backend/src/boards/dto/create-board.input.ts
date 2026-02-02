@@ -1,10 +1,11 @@
 import { Field, ID, InputType } from '@nestjs/graphql';
-import { IsString, MinLength } from 'class-validator';
+import { IsNotEmpty, IsString, MinLength } from 'class-validator';
 
 @InputType()
 export class CreateBoardInput {
   @Field(() => ID)
   @IsString()
+  @IsNotEmpty()
   workspaceId!: string;
 
   @Field()
