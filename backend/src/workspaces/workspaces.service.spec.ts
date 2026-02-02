@@ -488,5 +488,98 @@ describe('WorkspacesService', () => {
       expect(prisma.workspaceMember.delete).not.toHaveBeenCalled();
     });
   });
+
+  describe('leaveWorkspace', () => {
+    it('allows a member to leave the workspace', async () => {
+      const membership = {
+        userId: 'user-2',
+        workspaceId: 'workspace-1',
+        role: WorkspaceRole.MEMBER,
+      };
+      prisma.workspaceMember.findUnique = jest.fn().mockResolvedValue(membership);
+      prisma.workspaceMember.delete = jest.fn().mockResolvedValue(membership);
+
+      const result = await service.leaveWorkspace('workspace-1', 'user-2');
+
+      expect(prisma.workspaceMember.findUnique).toHaveBeenCalledWith({
+        where: {
+          userId_workspaceId: {
+            userId: 'user-2',
+            workspaceId: 'workspace-1',
+          },
+        },
+      });
+      expect(prisma.workspaceMember.delete).toHaveBeenCalledWith({
+        where: {
+          userId_workspaceId: {
+            userId: 'user-2',
+            workspaceId: 'workspace-1',
+          },
+        },
+      });
+      expect(result).toBe(true);
+    });
+
+    it('allows an owner to leave when there are multiple owners', async () => {
+      const membership = {
+        userId: 'user-2',
+        workspaceId: 'workspace-1',
+        role: WorkspaceRole.OWNER,
+      };
+      prisma.workspaceMember.findUnique = jest.fn().mockResolvedValue(membership);
+      prisma.workspaceMember.count = jest.fn().mockResolvedValue(2);
+      prisma.workspaceMember.delete = jest.fn().mockResolvedValue(membership);
+
+      const result = await service.leaveWorkspace('workspace-1', 'user-2');
+
+      expect(prisma.workspaceMember.findUnique).toHaveBeenCalledWith({
+        where: {
+          userId_workspaceId: {
+            userId: 'user-2',
+            workspaceId: 'workspace-1',
+          },
+        },
+      });
+      expect(prisma.workspaceMember.count).toHaveBeenCalledWith({
+        where: {
+          workspaceId: 'workspace-1',
+          role: WorkspaceRole.OWNER,
+        },
+      });
+      expect(prisma.workspaceMember.delete).toHaveBeenCalledWith({
+        where: {
+          userId_workspaceId: {
+            userId: 'user-2',
+            workspaceId: 'workspace-1',
+          },
+        },
+      });
+      expect(result).toBe(true);
+    });
+
+    it('throws NotFoundException when user is not a member', async () => {
+      prisma.workspaceMember.findUnique = jest.fn().mockResolvedValue(null);
+
+      await expect(service.leaveWorkspace('workspace-1', 'user-2')).rejects.toThrow(
+        NotFoundException
+      );
+      expect(prisma.workspaceMember.delete).not.toHaveBeenCalled();
+    });
+
+    it('throws ForbiddenException when trying to leave as the last owner', async () => {
+      const membership = {
+        userId: 'user-1',
+        workspaceId: 'workspace-1',
+        role: WorkspaceRole.OWNER,
+      };
+      prisma.workspaceMember.findUnique = jest.fn().mockResolvedValue(membership);
+      prisma.workspaceMember.count = jest.fn().mockResolvedValue(1);
+
+      await expect(service.leaveWorkspace('workspace-1', 'user-1')).rejects.toThrow(
+        ForbiddenException
+      );
+      expect(prisma.workspaceMember.delete).not.toHaveBeenCalled();
+    });
+  });
 });
 

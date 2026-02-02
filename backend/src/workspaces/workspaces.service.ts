@@ -211,5 +211,45 @@ export class WorkspacesService {
 
     return true;
   }
+
+  async leaveWorkspace(workspaceId: string, userId: string) {
+    const membership = await this.prisma.workspaceMember.findUnique({
+      where: {
+        userId_workspaceId: {
+          userId,
+          workspaceId,
+        },
+      },
+    });
+
+    if (!membership) {
+      throw new NotFoundException('User is not a member of this workspace');
+    }
+
+    // Check if this is the last OWNER
+    if (membership.role === WorkspaceRole.OWNER) {
+      const ownerCount = await this.prisma.workspaceMember.count({
+        where: {
+          workspaceId,
+          role: WorkspaceRole.OWNER,
+        },
+      });
+
+      if (ownerCount <= 1) {
+        throw new ForbiddenException('Cannot leave workspace as the last owner');
+      }
+    }
+
+    await this.prisma.workspaceMember.delete({
+      where: {
+        userId_workspaceId: {
+          userId,
+          workspaceId,
+        },
+      },
+    });
+
+    return true;
+  }
 }
 
