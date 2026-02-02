@@ -4,7 +4,7 @@ import { WorkspacesService } from '../workspaces/workspaces.service';
 import { BoardsService } from './boards.service';
 
 describe('BoardsService', () => {
-  const prisma = {
+    const prisma = {
     workspace: {
       findUnique: jest.fn(),
     },
@@ -15,6 +15,7 @@ describe('BoardsService', () => {
       create: jest.fn(),
       findMany: jest.fn(),
       findUnique: jest.fn(),
+      update: jest.fn(),
     },
   } as unknown as PrismaService;
   const workspacesService = {
@@ -504,6 +505,229 @@ describe('BoardsService', () => {
 
       expect(result).toBe(boardWithEmptyLists);
       expect(result?.lists).toEqual([]);
+    });
+  });
+
+  describe('updateBoard', () => {
+    it('updates board title when user is a workspace member', async () => {
+      const boardWithWorkspace = {
+        id: 'board-1',
+        title: 'Old Title',
+        description: null,
+        background: '#0079bf',
+        ownerId: 'user-1',
+        workspaceId: 'workspace-1',
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+      };
+      const updatedBoard = {
+        ...boardWithWorkspace,
+        title: 'New Title',
+        owner: { id: 'user-1', username: 'user1', email: 'user1@example.com' },
+        workspace: boardWithWorkspace.workspace,
+      };
+      prisma.board.findUnique = jest.fn().mockResolvedValue(boardWithWorkspace);
+      prisma.board.update = jest.fn().mockResolvedValue(updatedBoard);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
+      });
+
+      const result = await service.updateBoard('board-1', 'New Title', 'user-1');
+
+      expect(prisma.board.findUnique).toHaveBeenCalledWith({
+        where: { id: 'board-1' },
+        include: {
+          workspace: true,
+        },
+      });
+      expect(workspacesService.requireWorkspaceAccess).toHaveBeenCalledWith(
+        'workspace-1',
+        'user-1'
+      );
+      expect(prisma.board.update).toHaveBeenCalledWith({
+        where: { id: 'board-1' },
+        data: { title: 'New Title' },
+        include: {
+          owner: true,
+          workspace: true,
+        },
+      });
+      expect(result).toBe(updatedBoard);
+      expect(result.title).toBe('New Title');
+    });
+
+    it('updates board with description and background when provided', async () => {
+      const boardWithWorkspace = {
+        id: 'board-1',
+        title: 'Old Title',
+        description: null,
+        background: '#0079bf',
+        ownerId: 'user-1',
+        workspaceId: 'workspace-1',
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+      };
+      const updatedBoard = {
+        ...boardWithWorkspace,
+        title: 'New Title',
+        description: 'New Description',
+        background: '#ff0000',
+        owner: { id: 'user-1', username: 'user1', email: 'user1@example.com' },
+        workspace: boardWithWorkspace.workspace,
+      };
+      prisma.board.findUnique = jest.fn().mockResolvedValue(boardWithWorkspace);
+      prisma.board.update = jest.fn().mockResolvedValue(updatedBoard);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
+      });
+
+      const result = await service.updateBoard(
+        'board-1',
+        'New Title',
+        'user-1',
+        'New Description',
+        '#ff0000'
+      );
+
+      expect(prisma.board.update).toHaveBeenCalledWith({
+        where: { id: 'board-1' },
+        data: {
+          title: 'New Title',
+          description: 'New Description',
+          background: '#ff0000',
+        },
+        include: {
+          owner: true,
+          workspace: true,
+        },
+      });
+      expect(result).toBe(updatedBoard);
+      expect(result.title).toBe('New Title');
+      expect(result.description).toBe('New Description');
+      expect(result.background).toBe('#ff0000');
+    });
+
+    it('updates board with only description when background is not provided', async () => {
+      const boardWithWorkspace = {
+        id: 'board-1',
+        title: 'Old Title',
+        description: null,
+        background: '#0079bf',
+        ownerId: 'user-1',
+        workspaceId: 'workspace-1',
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+      };
+      const updatedBoard = {
+        ...boardWithWorkspace,
+        title: 'New Title',
+        description: 'New Description',
+        owner: { id: 'user-1', username: 'user1', email: 'user1@example.com' },
+        workspace: boardWithWorkspace.workspace,
+      };
+      prisma.board.findUnique = jest.fn().mockResolvedValue(boardWithWorkspace);
+      prisma.board.update = jest.fn().mockResolvedValue(updatedBoard);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
+      });
+
+      const result = await service.updateBoard('board-1', 'New Title', 'user-1', 'New Description');
+
+      expect(prisma.board.update).toHaveBeenCalledWith({
+        where: { id: 'board-1' },
+        data: {
+          title: 'New Title',
+          description: 'New Description',
+        },
+        include: {
+          owner: true,
+          workspace: true,
+        },
+      });
+      expect(result.description).toBe('New Description');
+    });
+
+    it('throws NotFoundException when boardId is empty', async () => {
+      await expect(service.updateBoard('', 'New Title', 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+      expect(prisma.board.findUnique).not.toHaveBeenCalled();
+      expect(workspacesService.requireWorkspaceAccess).not.toHaveBeenCalled();
+      expect(prisma.board.update).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when boardId is whitespace only', async () => {
+      await expect(service.updateBoard('   ', 'New Title', 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+      expect(prisma.board.findUnique).not.toHaveBeenCalled();
+      expect(workspacesService.requireWorkspaceAccess).not.toHaveBeenCalled();
+      expect(prisma.board.update).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when title is empty', async () => {
+      await expect(service.updateBoard('board-1', '', 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+      expect(prisma.board.findUnique).not.toHaveBeenCalled();
+      expect(workspacesService.requireWorkspaceAccess).not.toHaveBeenCalled();
+      expect(prisma.board.update).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when title is whitespace only', async () => {
+      await expect(service.updateBoard('board-1', '   ', 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+      expect(prisma.board.findUnique).not.toHaveBeenCalled();
+      expect(workspacesService.requireWorkspaceAccess).not.toHaveBeenCalled();
+      expect(prisma.board.update).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when board does not exist', async () => {
+      prisma.board.findUnique = jest.fn().mockResolvedValue(null);
+
+      await expect(service.updateBoard('board-1', 'New Title', 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+      expect(prisma.board.findUnique).toHaveBeenCalledWith({
+        where: { id: 'board-1' },
+        include: {
+          workspace: true,
+        },
+      });
+      expect(workspacesService.requireWorkspaceAccess).not.toHaveBeenCalled();
+      expect(prisma.board.update).not.toHaveBeenCalled();
+    });
+
+    it('throws ForbiddenException when user is not a workspace member', async () => {
+      const boardWithWorkspace = {
+        id: 'board-1',
+        title: 'Old Title',
+        description: null,
+        background: '#0079bf',
+        ownerId: 'user-1',
+        workspaceId: 'workspace-1',
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+      };
+      prisma.board.findUnique = jest.fn().mockResolvedValue(boardWithWorkspace);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockRejectedValue(
+        new ForbiddenException('Access denied')
+      );
+
+      await expect(service.updateBoard('board-1', 'New Title', 'user-2')).rejects.toThrow(
+        ForbiddenException
+      );
+      expect(prisma.board.findUnique).toHaveBeenCalledWith({
+        where: { id: 'board-1' },
+        include: {
+          workspace: true,
+        },
+      });
+      expect(workspacesService.requireWorkspaceAccess).toHaveBeenCalledWith(
+        'workspace-1',
+        'user-2'
+      );
+      expect(prisma.board.update).not.toHaveBeenCalled();
     });
   });
 });

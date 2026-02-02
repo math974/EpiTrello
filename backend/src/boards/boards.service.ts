@@ -116,5 +116,61 @@ export class BoardsService {
       },
     });
   }
+
+  async updateBoard(
+    boardId: string,
+    title: string,
+    userId: string,
+    description?: string | null,
+    background?: string
+  ) {
+    // Validate boardId is provided
+    if (!boardId || boardId.trim() === '') {
+      throw new NotFoundException('Board ID is required');
+    }
+
+    // Validate title is provided
+    if (!title || title.trim() === '') {
+      throw new NotFoundException('Title is required');
+    }
+
+    // Find the board with its workspace
+    const board = await this.prisma.board.findUnique({
+      where: { id: boardId },
+      include: {
+        workspace: true,
+      },
+    });
+
+    if (!board) {
+      throw new NotFoundException('Board not found');
+    }
+
+    // Check if user is a member of the workspace (throws ForbiddenException if not)
+    await this.workspacesService.requireWorkspaceAccess(board.workspaceId, userId);
+
+    // Prepare update data
+    const updateData: { title: string; description?: string | null; background?: string } = {
+      title,
+    };
+
+    if (description !== undefined) {
+      updateData.description = description;
+    }
+
+    if (background !== undefined) {
+      updateData.background = background;
+    }
+
+    // Update the board
+    return this.prisma.board.update({
+      where: { id: boardId },
+      data: updateData,
+      include: {
+        owner: true,
+        workspace: true,
+      },
+    });
+  }
 }
 
