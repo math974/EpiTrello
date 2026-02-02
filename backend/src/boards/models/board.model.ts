@@ -1,4 +1,7 @@
 import { Field, ID, ObjectType } from '@nestjs/graphql';
+import { UserModel } from '../../users/models/user.model';
+import { WorkspaceModel } from '../../workspaces/models/workspace.model';
+import { ListModel } from './list.model';
 
 @ObjectType()
 export class BoardModel {
@@ -17,8 +20,17 @@ export class BoardModel {
   @Field()
   ownerId!: string;
 
+  @Field(() => UserModel, { nullable: true })
+  owner?: UserModel;
+
   @Field(() => ID)
   workspaceId!: string;
+
+  @Field(() => WorkspaceModel, { nullable: true })
+  workspace?: WorkspaceModel;
+
+  @Field(() => [ListModel], { nullable: true })
+  lists?: ListModel[];
 
   @Field()
   createdAt!: Date;

@@ -26,5 +26,11 @@ export class BoardsResolver {
   ) {
     return this.boardsService.workspaceBoards(workspaceId, user.id);
   }
+
+  @Query(() => BoardModel, { nullable: true })
+  @AuthGuard()
+  async board(@Args('id') id: string, @Context('user') user: User) {
+    return this.boardsService.board(id, user.id);
+  }
 }
 

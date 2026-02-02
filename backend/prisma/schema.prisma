@@ -30,8 +30,35 @@ model Board {
   owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  lists       List[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model List {
+  id          String   @id @default(uuid())
+  title       String
+  position    Int      @default(0)
+  boardId     String
+  board       Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cards       Card[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([boardId])
+}
+
+model Card {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  position    Int      @default(0)
+  listId      String
+  list        List     @relation(fields: [listId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([listId])
 }
 
 enum WorkspaceRole {
