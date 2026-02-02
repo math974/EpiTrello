@@ -73,5 +73,48 @@ export class BoardsService {
       },
     });
   }
+
+  async board(boardId: string, userId: string) {
+    // Validate boardId is provided
+    if (!boardId || boardId.trim() === '') {
+      throw new NotFoundException('Board ID is required');
+    }
+
+    // Find the board with its workspace
+    const board = await this.prisma.board.findUnique({
+      where: { id: boardId },
+      include: {
+        workspace: true,
+      },
+    });
+
+    if (!board) {
+      throw new NotFoundException('Board not found');
+    }
+
+    // Check if user is a member of the workspace (throws ForbiddenException if not)
+    await this.workspacesService.requireWorkspaceAccess(board.workspaceId, userId);
+
+    // Return board with lists and cards
+    return this.prisma.board.findUnique({
+      where: { id: boardId },
+      include: {
+        owner: true,
+        workspace: true,
+        lists: {
+          include: {
+            cards: {
+              orderBy: {
+                position: 'asc',
+              },
+            },
+          },
+          orderBy: {
+            position: 'asc',
+          },
+        },
+      },
+    });
+  }
 }
 
