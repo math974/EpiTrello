@@ -11,6 +11,7 @@ describe('WorkspacesResolver', () => {
     deleteWorkspace: jest.fn(),
     addWorkspaceMember: jest.fn(),
     removeWorkspaceMember: jest.fn(),
+    leaveWorkspace: jest.fn(),
   } as unknown as WorkspacesService;
   const resolver = new WorkspacesResolver(workspacesService);
 
@@ -110,6 +111,17 @@ describe('WorkspacesResolver', () => {
       'user-1',
       'user-2'
     );
+    expect(result).toBe(true);
+  });
+
+  it('allows user to leave a workspace', async () => {
+    const user = { id: 'user-2' } as User;
+    const input = { workspaceId: 'workspace-1' };
+    workspacesService.leaveWorkspace = jest.fn().mockResolvedValue(true);
+
+    const result = await resolver.leaveWorkspace(input, user);
+
+    expect(workspacesService.leaveWorkspace).toHaveBeenCalledWith('workspace-1', 'user-2');
     expect(result).toBe(true);
   });
 });
