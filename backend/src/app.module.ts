@@ -9,6 +9,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthContextService } from './auth/auth.context';
 import { validateEnv } from './config/env.validation';
 import { WorkspacesModule } from './workspaces/workspaces.module';
+import { BoardsModule } from './boards/boards.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { WorkspacesModule } from './workspaces/workspaces.module';
     PrismaModule,
     AuthModule,
     WorkspacesModule,
+    BoardsModule,
     HealthModule,
   ],
 })

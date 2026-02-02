@@ -28,6 +28,8 @@ model Board {
   background  String   @default("#0079bf")
   ownerId     String
   owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -43,6 +45,7 @@ model Workspace {
   ownerId   String
   owner     User     @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   members   WorkspaceMember[]
+  boards    Board[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
