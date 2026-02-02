@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { WorkspaceRole } from '@prisma/client';
+import { Workspace, WorkspaceMember, WorkspaceRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -23,6 +23,47 @@ export class WorkspacesService {
       },
     });
   }
+
+  private async requireWorkspace(workspaceId: string): Promise<Workspace> {
+    const workspace = await this.prisma.workspace.findUnique({
+      where: { id: workspaceId },
+    });
+
+    if (!workspace) {
+      throw new NotFoundException('Workspace not found');
+    }
+
+    return workspace;
+  }
+
+  async requireWorkspaceAccess(
+    workspaceId: string,
+    userId: string
+  ): Promise<{ workspace: Workspace; membership: WorkspaceMember }> {
+    const workspace = await this.requireWorkspace(workspaceId);
+    const membership = await this.prisma.workspaceMember.findUnique({
+      where: { userId_workspaceId: { userId, workspaceId } },
+    });
+
+    if (!membership) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    return { workspace, membership };
+  }
+
+  async requireWorkspaceOwner(
+    workspaceId: string,
+    userId: string
+  ): Promise<{ workspace: Workspace; membership: WorkspaceMember }> {
+    const { workspace, membership } = await this.requireWorkspaceAccess(workspaceId, userId);
+
+    if (membership.role !== WorkspaceRole.OWNER) {
+      throw new ForbiddenException('Only a workspace owner can perform this action');
+    }
+
+    return { workspace, membership };
+  }
   myWorkspaces(userId: string) {
     return this.prisma.workspaceMember.findMany({
       where: { userId },
@@ -42,12 +83,7 @@ export class WorkspacesService {
   }
 
   async getWorkspace(userId: string, workspaceId: string) {
-    const membership = await this.prisma.workspaceMember.findUnique({
-      where: { userId_workspaceId: { userId, workspaceId } },
-    });
-    if (!membership) {
-      throw new ForbiddenException('Access denied');
-    }
+    await this.requireWorkspaceAccess(workspaceId, userId);
 
     const workspace = await this.prisma.workspace.findUnique({
       where: { id: workspaceId },
@@ -71,17 +107,7 @@ export class WorkspacesService {
   }
 
   async updateWorkspace(workspaceId: string, userId: string, name: string) {
-    const workspace = await this.prisma.workspace.findUnique({
-      where: { id: workspaceId },
-    });
-
-    if (!workspace) {
-      throw new NotFoundException('Workspace not found');
-    }
-
-    if (workspace.ownerId !== userId) {
-      throw new ForbiddenException('Only the workspace owner can update it');
-    }
+    await this.requireWorkspaceOwner(workspaceId, userId);
 
     return this.prisma.workspace.update({
       where: { id: workspaceId },
@@ -93,17 +119,7 @@ export class WorkspacesService {
   }
 
   async deleteWorkspace(workspaceId: string, userId: string) {
-    const workspace = await this.prisma.workspace.findUnique({
-      where: { id: workspaceId },
-    });
-
-    if (!workspace) {
-      throw new NotFoundException('Workspace not found');
-    }
-
-    if (workspace.ownerId !== userId) {
-      throw new ForbiddenException('Only the workspace owner can delete it');
-    }
+    await this.requireWorkspaceOwner(workspaceId, userId);
 
     // Delete workspace - WorkspaceMember and Boards will be deleted in cascade (onDelete: Cascade)
     await this.prisma.workspace.delete({
@@ -114,17 +130,7 @@ export class WorkspacesService {
   }
 
   async addWorkspaceMember(workspaceId: string, ownerId: string, email: string) {
-    const workspace = await this.prisma.workspace.findUnique({
-      where: { id: workspaceId },
-    });
-
-    if (!workspace) {
-      throw new NotFoundException('Workspace not found');
-    }
-
-    if (workspace.ownerId !== ownerId) {
-      throw new ForbiddenException('Only the workspace owner can add members');
-    }
+    await this.requireWorkspaceOwner(workspaceId, ownerId);
 
     const user = await this.prisma.user.findUnique({
       where: { email },
@@ -161,17 +167,7 @@ export class WorkspacesService {
   }
 
   async removeWorkspaceMember(workspaceId: string, ownerId: string, userIdToRemove: string) {
-    const workspace = await this.prisma.workspace.findUnique({
-      where: { id: workspaceId },
-    });
-
-    if (!workspace) {
-      throw new NotFoundException('Workspace not found');
-    }
-
-    if (workspace.ownerId !== ownerId) {
-      throw new ForbiddenException('Only the workspace owner can remove members');
-    }
+    await this.requireWorkspaceOwner(workspaceId, ownerId);
 
     const memberToRemove = await this.prisma.workspaceMember.findUnique({
       where: {
