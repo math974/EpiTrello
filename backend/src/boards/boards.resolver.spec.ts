@@ -7,6 +7,7 @@ describe('BoardsResolver', () => {
     createBoard: jest.fn(),
     workspaceBoards: jest.fn(),
     board: jest.fn(),
+    updateBoard: jest.fn(),
   } as unknown as BoardsService;
   const resolver = new BoardsResolver(boardsService);
 
@@ -85,6 +86,36 @@ describe('BoardsResolver', () => {
 
     expect(boardsService.board).toHaveBeenCalledWith('board-1', 'user-1');
     expect(result).toBe(board);
+  });
+
+  it('updates a board for the current user', async () => {
+    const user = { id: 'user-1' } as User;
+    const input = {
+      id: 'board-1',
+      title: 'Updated Board Title',
+      description: 'Updated description',
+      background: '#ff0000',
+    };
+    const updatedBoard = {
+      id: 'board-1',
+      title: 'Updated Board Title',
+      description: 'Updated description',
+      background: '#ff0000',
+      ownerId: 'user-1',
+      workspaceId: 'workspace-1',
+    };
+    boardsService.updateBoard = jest.fn().mockResolvedValue(updatedBoard);
+
+    const result = await resolver.updateBoard(input, user);
+
+    expect(boardsService.updateBoard).toHaveBeenCalledWith(
+      'board-1',
+      'Updated Board Title',
+      'user-1',
+      'Updated description',
+      '#ff0000'
+    );
+    expect(result).toBe(updatedBoard);
   });
 });
 
