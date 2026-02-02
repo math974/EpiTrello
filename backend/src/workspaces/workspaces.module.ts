@@ -7,6 +7,7 @@ import { WorkspacesService } from './workspaces.service';
 @Module({
   imports: [AuthModule],
   providers: [WorkspacesResolver, WorkspacesService],
+  exports: [WorkspacesService],
 })
 export class WorkspacesModule {}
 
