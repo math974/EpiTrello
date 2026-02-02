@@ -97,7 +97,24 @@ describe('WorkspacesService', () => {
   });
 
   it('returns workspace details when user is a member', async () => {
-    const workspace = { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' };
+    const workspace = {
+      id: 'workspace-1',
+      name: 'Acme',
+      ownerId: 'user-1',
+      boards: [
+        {
+          id: 'board-1',
+          title: 'Test Board',
+          description: null,
+          background: '#0079bf',
+          ownerId: 'user-1',
+          workspaceId: 'workspace-1',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          owner: { id: 'user-1', username: 'user1', email: 'user1@example.com' },
+        },
+      ],
+    };
     prisma.workspace.findUnique = jest.fn().mockResolvedValue(workspace);
     prisma.workspaceMember.findUnique = jest.fn().mockResolvedValue({ userId: 'user-1' });
     prisma.workspaceMember.findMany = jest
@@ -111,7 +128,17 @@ describe('WorkspacesService', () => {
     });
     expect(prisma.workspace.findUnique).toHaveBeenCalledWith({
       where: { id: 'workspace-1' },
-      include: { owner: true },
+      include: {
+        owner: true,
+        boards: {
+          include: {
+            owner: true,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
+      },
     });
     expect(prisma.workspaceMember.findMany).toHaveBeenCalledWith({
       where: { workspaceId: 'workspace-1' },
@@ -121,7 +148,6 @@ describe('WorkspacesService', () => {
     expect(result).toEqual({
       ...workspace,
       members: [{ userId: 'user-1', workspaceId: 'workspace-1' }],
-      boards: [],
     });
   });
 

@@ -87,7 +87,17 @@ export class WorkspacesService {
 
     const workspace = await this.prisma.workspace.findUnique({
       where: { id: workspaceId },
-      include: { owner: true },
+      include: {
+        owner: true,
+        boards: {
+          include: {
+            owner: true,
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
+      },
     });
     if (!workspace) {
       return null;
@@ -102,7 +112,6 @@ export class WorkspacesService {
     return {
       ...workspace,
       members,
-      boards: [],
     };
   }
 
