@@ -10,6 +10,7 @@ import { AuthContextService } from './auth/auth.context';
 import { validateEnv } from './config/env.validation';
 import { WorkspacesModule } from './workspaces/workspaces.module';
 import { BoardsModule } from './boards/boards.module';
+import { ListsModule } from './lists/lists.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { BoardsModule } from './boards/boards.module';
     AuthModule,
     WorkspacesModule,
     BoardsModule,
+    ListsModule,
     HealthModule,
   ],
 })
