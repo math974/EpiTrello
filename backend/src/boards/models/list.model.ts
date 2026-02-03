@@ -12,6 +12,9 @@ export class ListModel {
   @Field(() => Int)
   position!: number;
 
+  @Field(() => Boolean)
+  archived!: boolean;
+
   @Field(() => ID)
   boardId!: string;
 

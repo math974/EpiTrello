@@ -39,6 +39,7 @@ model List {
   id          String   @id @default(uuid())
   title       String
   position    Int      @default(0)
+  archived    Boolean  @default(false)
   boardId     String
   board       Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
   cards       Card[]

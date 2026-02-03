@@ -366,5 +366,186 @@ describe('ListsService', () => {
       expect(prisma.list.update).not.toHaveBeenCalled();
     });
   });
+
+  describe('archiveList', () => {
+    it('archives a list when user is a workspace member and archived is true', async () => {
+      const listWithBoard = {
+        id: 'list-1',
+        title: 'My List',
+        position: 0,
+        archived: false,
+        boardId: 'board-1',
+        board: {
+          id: 'board-1',
+          title: 'My Board',
+          workspaceId: 'workspace-1',
+          workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        },
+      };
+      const archivedList = {
+        id: 'list-1',
+        title: 'My List',
+        position: 0,
+        archived: true,
+        boardId: 'board-1',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        board: listWithBoard.board,
+      };
+      prisma.list.findUnique = jest.fn().mockResolvedValue(listWithBoard);
+      prisma.list.update = jest.fn().mockResolvedValue(archivedList);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
+      });
+
+      const result = await service.archiveList('list-1', true, 'user-1');
+
+      expect(prisma.list.findUnique).toHaveBeenCalledWith({
+        where: { id: 'list-1' },
+        include: {
+          board: {
+            include: {
+              workspace: true,
+            },
+          },
+        },
+      });
+      expect(workspacesService.requireWorkspaceAccess).toHaveBeenCalledWith(
+        'workspace-1',
+        'user-1'
+      );
+      expect(prisma.list.update).toHaveBeenCalledWith({
+        where: { id: 'list-1' },
+        data: {
+          archived: true,
+        },
+        include: {
+          board: true,
+        },
+      });
+      expect(result).toBe(archivedList);
+      expect(result.archived).toBe(true);
+    });
+
+    it('unarchives a list when user is a workspace member and archived is false', async () => {
+      const listWithBoard = {
+        id: 'list-1',
+        title: 'My List',
+        position: 0,
+        archived: true,
+        boardId: 'board-1',
+        board: {
+          id: 'board-1',
+          title: 'My Board',
+          workspaceId: 'workspace-1',
+          workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        },
+      };
+      const unarchivedList = {
+        id: 'list-1',
+        title: 'My List',
+        position: 0,
+        archived: false,
+        boardId: 'board-1',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        board: listWithBoard.board,
+      };
+      prisma.list.findUnique = jest.fn().mockResolvedValue(listWithBoard);
+      prisma.list.update = jest.fn().mockResolvedValue(unarchivedList);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
+      });
+
+      const result = await service.archiveList('list-1', false, 'user-1');
+
+      expect(prisma.list.update).toHaveBeenCalledWith({
+        where: { id: 'list-1' },
+        data: {
+          archived: false,
+        },
+        include: {
+          board: true,
+        },
+      });
+      expect(result).toBe(unarchivedList);
+      expect(result.archived).toBe(false);
+    });
+
+    it('throws NotFoundException when listId is empty', async () => {
+      await expect(service.archiveList('', true, 'user-1')).rejects.toThrow(NotFoundException);
+      expect(prisma.list.findUnique).not.toHaveBeenCalled();
+      expect(workspacesService.requireWorkspaceAccess).not.toHaveBeenCalled();
+      expect(prisma.list.update).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when listId is whitespace only', async () => {
+      await expect(service.archiveList('   ', true, 'user-1')).rejects.toThrow(NotFoundException);
+      expect(prisma.list.findUnique).not.toHaveBeenCalled();
+      expect(workspacesService.requireWorkspaceAccess).not.toHaveBeenCalled();
+      expect(prisma.list.update).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when list does not exist', async () => {
+      prisma.list.findUnique = jest.fn().mockResolvedValue(null);
+
+      await expect(service.archiveList('list-1', true, 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+      expect(prisma.list.findUnique).toHaveBeenCalledWith({
+        where: { id: 'list-1' },
+        include: {
+          board: {
+            include: {
+              workspace: true,
+            },
+          },
+        },
+      });
+      expect(workspacesService.requireWorkspaceAccess).not.toHaveBeenCalled();
+      expect(prisma.list.update).not.toHaveBeenCalled();
+    });
+
+    it('throws ForbiddenException when user is not a workspace member', async () => {
+      const listWithBoard = {
+        id: 'list-1',
+        title: 'My List',
+        position: 0,
+        archived: false,
+        boardId: 'board-1',
+        board: {
+          id: 'board-1',
+          title: 'My Board',
+          workspaceId: 'workspace-1',
+          workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        },
+      };
+      prisma.list.findUnique = jest.fn().mockResolvedValue(listWithBoard);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockRejectedValue(
+        new ForbiddenException('Access denied')
+      );
+
+      await expect(service.archiveList('list-1', true, 'user-2')).rejects.toThrow(
+        ForbiddenException
+      );
+      expect(prisma.list.findUnique).toHaveBeenCalledWith({
+        where: { id: 'list-1' },
+        include: {
+          board: {
+            include: {
+              workspace: true,
+            },
+          },
+        },
+      });
+      expect(workspacesService.requireWorkspaceAccess).toHaveBeenCalledWith(
+        'workspace-1',
+        'user-2'
+      );
+      expect(prisma.list.update).not.toHaveBeenCalled();
+    });
+  });
 });
 
