@@ -36,15 +36,16 @@ model Board {
 }
 
 model List {
-  id          String   @id @default(uuid())
-  title       String
-  position    Int      @default(0)
-  archived    Boolean  @default(false)
-  boardId     String
-  board       Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  cards       Card[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(uuid())
+  title           String
+  position        Int      @default(0)
+  archived        Boolean  @default(false)
+  archivedPosition Int?    // Store original position when archived
+  boardId         String
+  board           Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cards           Card[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@index([boardId])
 }
