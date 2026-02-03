@@ -135,5 +135,56 @@ export class ListsService {
       },
     });
   }
+
+  async deleteList(listId: string, userId: string) {
+    // Validate listId is provided
+    if (!listId || listId.trim() === '') {
+      throw new NotFoundException('List ID is required');
+    }
+
+    // Find the list with its board and workspace
+    const list = await this.prisma.list.findUnique({
+      where: { id: listId },
+      include: {
+        board: {
+          include: {
+            workspace: true,
+          },
+        },
+      },
+    });
+
+    if (!list) {
+      throw new NotFoundException('List not found');
+    }
+
+    // Check if user is a member of the workspace (throws ForbiddenException if not)
+    await this.workspacesService.requireWorkspaceAccess(list.board.workspaceId, userId);
+
+    // Use a transaction to delete the list and reorganize positions
+    await this.prisma.$transaction(async (tx) => {
+      // Delete the list (cards will be deleted in cascade due to onDelete: Cascade)
+      await tx.list.delete({
+        where: { id: listId },
+      });
+
+      // Reorganize positions: decrement positions of all lists after the deleted one
+      await tx.list.updateMany({
+        where: {
+          boardId: list.boardId,
+          position: {
+            gt: list.position,
+          },
+        },
+        data: {
+          position: {
+            decrement: 1,
+          },
+        },
+      });
+    });
+
+    return true;
+  }
 }
 

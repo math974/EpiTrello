@@ -7,6 +7,7 @@ describe('ListsResolver', () => {
     createList: jest.fn(),
     updateList: jest.fn(),
     archiveList: jest.fn(),
+    deleteList: jest.fn(),
   } as unknown as ListsService;
   const resolver = new ListsResolver(listsService);
 
@@ -90,6 +91,16 @@ describe('ListsResolver', () => {
 
     expect(listsService.archiveList).toHaveBeenCalledWith('list-1', false, 'user-1');
     expect(result).toBe(unarchivedList);
+  });
+
+  it('deletes a list for the current user', async () => {
+    const user = { id: 'user-1' } as User;
+    listsService.deleteList = jest.fn().mockResolvedValue(true);
+
+    const result = await resolver.deleteList('list-1', user);
+
+    expect(listsService.deleteList).toHaveBeenCalledWith('list-1', 'user-1');
+    expect(result).toBe(true);
   });
 });
 
