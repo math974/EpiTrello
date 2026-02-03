@@ -15,6 +15,7 @@ describe('ListsService', () => {
       update: jest.fn(),
       delete: jest.fn(),
       updateMany: jest.fn(),
+      findMany: jest.fn(),
     },
     $transaction: jest.fn(),
   } as unknown as PrismaService;
@@ -371,12 +372,13 @@ describe('ListsService', () => {
   });
 
   describe('archiveList', () => {
-    it('archives a list when user is a workspace member and archived is true', async () => {
+    it('archives a list and reorganizes positions when user is a workspace member and archived is true', async () => {
       const listWithBoard = {
         id: 'list-1',
         title: 'My List',
-        position: 0,
+        position: 1,
         archived: false,
+        archivedPosition: null,
         boardId: 'board-1',
         board: {
           id: 'board-1',
@@ -388,15 +390,27 @@ describe('ListsService', () => {
       const archivedList = {
         id: 'list-1',
         title: 'My List',
-        position: 0,
+        position: 1,
         archived: true,
+        archivedPosition: 1, // Original position stored
         boardId: 'board-1',
         createdAt: new Date(),
         updatedAt: new Date(),
         board: listWithBoard.board,
       };
-      prisma.list.findUnique = jest.fn().mockResolvedValue(listWithBoard);
-      prisma.list.update = jest.fn().mockResolvedValue(archivedList);
+      prisma.list.findUnique = jest
+        .fn()
+        .mockResolvedValueOnce(listWithBoard)
+        .mockResolvedValueOnce(archivedList);
+      prisma.$transaction = jest.fn().mockImplementation(async (callback) => {
+        const tx = {
+          list: {
+            update: jest.fn().mockResolvedValue(archivedList),
+            updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+          },
+        };
+        return callback(tx);
+      });
       workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
         workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
         membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
@@ -418,25 +432,18 @@ describe('ListsService', () => {
         'workspace-1',
         'user-1'
       );
-      expect(prisma.list.update).toHaveBeenCalledWith({
-        where: { id: 'list-1' },
-        data: {
-          archived: true,
-        },
-        include: {
-          board: true,
-        },
-      });
+      expect(prisma.$transaction).toHaveBeenCalled();
       expect(result).toBe(archivedList);
-      expect(result.archived).toBe(true);
+      expect(result?.archived).toBe(true);
     });
 
-    it('unarchives a list when user is a workspace member and archived is false', async () => {
+    it('unarchives a list and restores it to its original position when user is a workspace member and archived is false', async () => {
       const listWithBoard = {
         id: 'list-1',
         title: 'My List',
         position: 0,
         archived: true,
+        archivedPosition: 1, // Original position was 1
         boardId: 'board-1',
         board: {
           id: 'board-1',
@@ -448,15 +455,27 @@ describe('ListsService', () => {
       const unarchivedList = {
         id: 'list-1',
         title: 'My List',
-        position: 0,
+        position: 1,
         archived: false,
+        archivedPosition: null,
         boardId: 'board-1',
         createdAt: new Date(),
         updatedAt: new Date(),
         board: listWithBoard.board,
       };
-      prisma.list.findUnique = jest.fn().mockResolvedValue(listWithBoard);
-      prisma.list.update = jest.fn().mockResolvedValue(unarchivedList);
+      prisma.list.findUnique = jest
+        .fn()
+        .mockResolvedValueOnce(listWithBoard)
+        .mockResolvedValueOnce(unarchivedList);
+      prisma.$transaction = jest.fn().mockImplementation(async (callback) => {
+        const tx = {
+          list: {
+            updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+            update: jest.fn().mockResolvedValue(unarchivedList),
+          },
+        };
+        return callback(tx);
+      });
       workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
         workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
         membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
@@ -464,17 +483,10 @@ describe('ListsService', () => {
 
       const result = await service.archiveList('list-1', false, 'user-1');
 
-      expect(prisma.list.update).toHaveBeenCalledWith({
-        where: { id: 'list-1' },
-        data: {
-          archived: false,
-        },
-        include: {
-          board: true,
-        },
-      });
+      expect(prisma.$transaction).toHaveBeenCalled();
       expect(result).toBe(unarchivedList);
-      expect(result.archived).toBe(false);
+      expect(result?.archived).toBe(false);
+      expect(result?.position).toBe(1); // Restored to original position
     });
 
     it('throws NotFoundException when listId is empty', async () => {
@@ -548,6 +560,64 @@ describe('ListsService', () => {
         'user-2'
       );
       expect(prisma.list.update).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when list is already archived and archived is true', async () => {
+      const listWithBoard = {
+        id: 'list-1',
+        title: 'My List',
+        position: 0,
+        archived: true,
+        archivedPosition: 0,
+        boardId: 'board-1',
+        board: {
+          id: 'board-1',
+          title: 'My Board',
+          workspaceId: 'workspace-1',
+          workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        },
+      };
+      prisma.list.findUnique = jest.fn().mockResolvedValue(listWithBoard);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
+      });
+
+      const result = await service.archiveList('list-1', true, 'user-1');
+
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(prisma.list.findFirst).not.toHaveBeenCalled();
+      expect(prisma.list.update).not.toHaveBeenCalled();
+      expect(result).toBe(listWithBoard);
+    });
+
+    it('does nothing when list is already unarchived and archived is false', async () => {
+      const listWithBoard = {
+        id: 'list-1',
+        title: 'My List',
+        position: 0,
+        archived: false,
+        archivedPosition: null,
+        boardId: 'board-1',
+        board: {
+          id: 'board-1',
+          title: 'My Board',
+          workspaceId: 'workspace-1',
+          workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        },
+      };
+      prisma.list.findUnique = jest.fn().mockResolvedValue(listWithBoard);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
+      });
+
+      const result = await service.archiveList('list-1', false, 'user-1');
+
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(prisma.list.findFirst).not.toHaveBeenCalled();
+      expect(prisma.list.update).not.toHaveBeenCalled();
+      expect(result).toBe(listWithBoard);
     });
   });
 
@@ -702,6 +772,204 @@ describe('ListsService', () => {
         'workspace-1',
         'user-2'
       );
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('reorderLists', () => {
+    it('reorders lists when user is a workspace member', async () => {
+      const boardWithWorkspace = {
+        id: 'board-1',
+        title: 'My Board',
+        workspaceId: 'workspace-1',
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+      };
+      const boardLists = [
+        { id: 'list-1' },
+        { id: 'list-2' },
+        { id: 'list-3' },
+      ];
+      const orderedListIds = ['list-3', 'list-1', 'list-2'];
+
+      prisma.board.findUnique = jest.fn().mockResolvedValue(boardWithWorkspace);
+      prisma.list.findMany = jest.fn().mockResolvedValue(boardLists);
+      prisma.$transaction = jest.fn().mockImplementation(async (callback) => {
+        const tx = {
+          list: {
+            update: jest.fn().mockResolvedValue({}),
+          },
+        };
+        return callback(tx);
+      });
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
+      });
+
+      const result = await service.reorderLists('board-1', orderedListIds, 'user-1');
+
+      expect(prisma.board.findUnique).toHaveBeenCalledWith({
+        where: { id: 'board-1' },
+        include: {
+          workspace: true,
+        },
+      });
+      expect(prisma.list.findMany).toHaveBeenCalledWith({
+        where: { boardId: 'board-1', archived: false },
+        select: { id: true },
+      });
+      expect(workspacesService.requireWorkspaceAccess).toHaveBeenCalledWith(
+        'workspace-1',
+        'user-1'
+      );
+      expect(prisma.$transaction).toHaveBeenCalled();
+      expect(result).toBe(true);
+    });
+
+    it('throws NotFoundException when boardId is empty', async () => {
+      await expect(service.reorderLists('', ['list-1'], 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+      expect(prisma.board.findUnique).not.toHaveBeenCalled();
+      expect(workspacesService.requireWorkspaceAccess).not.toHaveBeenCalled();
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when orderedListIds is empty', async () => {
+      await expect(service.reorderLists('board-1', [], 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+      expect(prisma.board.findUnique).not.toHaveBeenCalled();
+      expect(workspacesService.requireWorkspaceAccess).not.toHaveBeenCalled();
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when board does not exist', async () => {
+      prisma.board.findUnique = jest.fn().mockResolvedValue(null);
+
+      await expect(service.reorderLists('board-1', ['list-1'], 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+      expect(prisma.board.findUnique).toHaveBeenCalledWith({
+        where: { id: 'board-1' },
+        include: {
+          workspace: true,
+        },
+      });
+      expect(workspacesService.requireWorkspaceAccess).not.toHaveBeenCalled();
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('throws ForbiddenException when user is not a workspace member', async () => {
+      const boardWithWorkspace = {
+        id: 'board-1',
+        title: 'My Board',
+        workspaceId: 'workspace-1',
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+      };
+      prisma.board.findUnique = jest.fn().mockResolvedValue(boardWithWorkspace);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockRejectedValue(
+        new ForbiddenException('Access denied')
+      );
+
+      await expect(service.reorderLists('board-1', ['list-1'], 'user-2')).rejects.toThrow(
+        ForbiddenException
+      );
+      expect(prisma.board.findUnique).toHaveBeenCalledWith({
+        where: { id: 'board-1' },
+        include: {
+          workspace: true,
+        },
+      });
+      expect(workspacesService.requireWorkspaceAccess).toHaveBeenCalledWith(
+        'workspace-1',
+        'user-2'
+      );
+      expect(prisma.list.findMany).not.toHaveBeenCalled();
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when a list does not belong to the board', async () => {
+      const boardWithWorkspace = {
+        id: 'board-1',
+        title: 'My Board',
+        workspaceId: 'workspace-1',
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+      };
+      const boardLists = [{ id: 'list-1' }, { id: 'list-2' }];
+      const orderedListIds = ['list-1', 'list-3']; // list-3 doesn't belong to board-1
+
+      prisma.board.findUnique = jest.fn().mockResolvedValue(boardWithWorkspace);
+      prisma.list.findMany = jest.fn().mockResolvedValue(boardLists);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
+      });
+
+      await expect(service.reorderLists('board-1', orderedListIds, 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+      expect(prisma.list.findMany).toHaveBeenCalledWith({
+        where: { boardId: 'board-1', archived: false },
+        select: { id: true },
+      });
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when not all board lists are included', async () => {
+      const boardWithWorkspace = {
+        id: 'board-1',
+        title: 'My Board',
+        workspaceId: 'workspace-1',
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+      };
+      const boardLists = [{ id: 'list-1' }, { id: 'list-2' }, { id: 'list-3' }];
+      const orderedListIds = ['list-1', 'list-2']; // Missing list-3
+
+      prisma.board.findUnique = jest.fn().mockResolvedValue(boardWithWorkspace);
+      prisma.list.findMany = jest.fn().mockResolvedValue(boardLists);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
+      });
+
+      await expect(service.reorderLists('board-1', orderedListIds, 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+      expect(prisma.list.findMany).toHaveBeenCalledWith({
+        where: { boardId: 'board-1', archived: false },
+        select: { id: true },
+      });
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when trying to reorder with an archived list', async () => {
+      const boardWithWorkspace = {
+        id: 'board-1',
+        title: 'My Board',
+        workspaceId: 'workspace-1',
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+      };
+      const boardLists = [
+        { id: 'list-1' },
+        { id: 'list-2' },
+      ]; // list-3 is archived, so not included
+      const orderedListIds = ['list-1', 'list-2', 'list-3']; // list-3 is archived
+
+      prisma.board.findUnique = jest.fn().mockResolvedValue(boardWithWorkspace);
+      prisma.list.findMany = jest.fn().mockResolvedValue(boardLists);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
+      });
+
+      await expect(service.reorderLists('board-1', orderedListIds, 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+      expect(prisma.list.findMany).toHaveBeenCalledWith({
+        where: { boardId: 'board-1', archived: false },
+        select: { id: true },
+      });
       expect(prisma.$transaction).not.toHaveBeenCalled();
     });
   });

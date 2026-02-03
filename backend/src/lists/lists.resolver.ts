@@ -4,6 +4,7 @@ import { AuthGuard } from '../common/guards/gql-auth.decorator';
 import { CreateListInput } from './dto/create-list.input';
 import { UpdateListInput } from './dto/update-list.input';
 import { ArchiveListInput } from './dto/archive-list.input';
+import { ReorderListsInput } from './dto/reorder-lists.input';
 import { ListModel } from '../boards/models/list.model';
 import { ListsService } from './lists.service';
 
@@ -42,6 +43,15 @@ export class ListsResolver {
   @AuthGuard()
   async deleteList(@Args('id') id: string, @Context('user') user: User) {
     return this.listsService.deleteList(id, user.id);
+  }
+
+  @Mutation(() => Boolean)
+  @AuthGuard()
+  async reorderLists(
+    @Args('input', { type: () => ReorderListsInput }) input: ReorderListsInput,
+    @Context('user') user: User
+  ) {
+    return this.listsService.reorderLists(input.boardId, input.orderedListIds, user.id);
   }
 }
 
