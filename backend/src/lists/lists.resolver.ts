@@ -3,6 +3,7 @@ import { User } from '@prisma/client';
 import { AuthGuard } from '../common/guards/gql-auth.decorator';
 import { CreateListInput } from './dto/create-list.input';
 import { UpdateListInput } from './dto/update-list.input';
+import { ArchiveListInput } from './dto/archive-list.input';
 import { ListModel } from '../boards/models/list.model';
 import { ListsService } from './lists.service';
 
@@ -26,6 +27,15 @@ export class ListsResolver {
     @Context('user') user: User
   ) {
     return this.listsService.updateList(input.id, input.title, user.id);
+  }
+
+  @Mutation(() => ListModel)
+  @AuthGuard()
+  async archiveList(
+    @Args('input', { type: () => ArchiveListInput }) input: ArchiveListInput,
+    @Context('user') user: User
+  ) {
+    return this.listsService.archiveList(input.id, input.archived, user.id);
   }
 }
 

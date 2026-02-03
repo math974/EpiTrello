@@ -6,6 +6,7 @@ describe('ListsResolver', () => {
   const listsService = {
     createList: jest.fn(),
     updateList: jest.fn(),
+    archiveList: jest.fn(),
   } as unknown as ListsService;
   const resolver = new ListsResolver(listsService);
 
@@ -49,6 +50,46 @@ describe('ListsResolver', () => {
 
     expect(listsService.updateList).toHaveBeenCalledWith('list-1', 'Updated Title', 'user-1');
     expect(result).toBe(updatedList);
+  });
+
+  it('archives a list for the current user', async () => {
+    const user = { id: 'user-1' } as User;
+    const input = { id: 'list-1', archived: true };
+    const archivedList = {
+      id: 'list-1',
+      title: 'My List',
+      position: 0,
+      archived: true,
+      boardId: 'board-1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    listsService.archiveList = jest.fn().mockResolvedValue(archivedList);
+
+    const result = await resolver.archiveList(input, user);
+
+    expect(listsService.archiveList).toHaveBeenCalledWith('list-1', true, 'user-1');
+    expect(result).toBe(archivedList);
+  });
+
+  it('unarchives a list for the current user', async () => {
+    const user = { id: 'user-1' } as User;
+    const input = { id: 'list-1', archived: false };
+    const unarchivedList = {
+      id: 'list-1',
+      title: 'My List',
+      position: 0,
+      archived: false,
+      boardId: 'board-1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    listsService.archiveList = jest.fn().mockResolvedValue(unarchivedList);
+
+    const result = await resolver.archiveList(input, user);
+
+    expect(listsService.archiveList).toHaveBeenCalledWith('list-1', false, 'user-1');
+    expect(result).toBe(unarchivedList);
   });
 });
 
