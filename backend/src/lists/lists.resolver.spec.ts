@@ -8,6 +8,7 @@ describe('ListsResolver', () => {
     updateList: jest.fn(),
     archiveList: jest.fn(),
     deleteList: jest.fn(),
+    reorderLists: jest.fn(),
   } as unknown as ListsService;
   const resolver = new ListsResolver(listsService);
 
@@ -100,6 +101,21 @@ describe('ListsResolver', () => {
     const result = await resolver.deleteList('list-1', user);
 
     expect(listsService.deleteList).toHaveBeenCalledWith('list-1', 'user-1');
+    expect(result).toBe(true);
+  });
+
+  it('reorders lists for the current user', async () => {
+    const user = { id: 'user-1' } as User;
+    const input = { boardId: 'board-1', orderedListIds: ['list-3', 'list-1', 'list-2'] };
+    listsService.reorderLists = jest.fn().mockResolvedValue(true);
+
+    const result = await resolver.reorderLists(input, user);
+
+    expect(listsService.reorderLists).toHaveBeenCalledWith(
+      'board-1',
+      ['list-3', 'list-1', 'list-2'],
+      'user-1'
+    );
     expect(result).toBe(true);
   });
 });
