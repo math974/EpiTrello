@@ -16,6 +16,7 @@ describe('BoardsService', () => {
       findMany: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
+      delete: jest.fn(),
     },
   } as unknown as PrismaService;
   const workspacesService = {
@@ -728,6 +729,130 @@ describe('BoardsService', () => {
         'user-2'
       );
       expect(prisma.board.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteBoard', () => {
+    it('deletes board when user is the board creator', async () => {
+      const boardWithWorkspace = {
+        id: 'board-1',
+        title: 'My Board',
+        description: null,
+        background: '#0079bf',
+        ownerId: 'user-1',
+        workspaceId: 'workspace-1',
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-2' },
+      };
+      prisma.board.findUnique = jest.fn().mockResolvedValue(boardWithWorkspace);
+      prisma.board.delete = jest.fn().mockResolvedValue(boardWithWorkspace);
+
+      const result = await service.deleteBoard('board-1', 'user-1');
+
+      expect(prisma.board.findUnique).toHaveBeenCalledWith({
+        where: { id: 'board-1' },
+        include: {
+          workspace: true,
+        },
+      });
+      expect(prisma.board.delete).toHaveBeenCalledWith({
+        where: { id: 'board-1' },
+      });
+      expect(result).toBe(true);
+    });
+
+    it('deletes board when user is the workspace owner', async () => {
+      const boardWithWorkspace = {
+        id: 'board-1',
+        title: 'My Board',
+        description: null,
+        background: '#0079bf',
+        ownerId: 'user-2',
+        workspaceId: 'workspace-1',
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+      };
+      prisma.board.findUnique = jest.fn().mockResolvedValue(boardWithWorkspace);
+      prisma.board.delete = jest.fn().mockResolvedValue(boardWithWorkspace);
+
+      const result = await service.deleteBoard('board-1', 'user-1');
+
+      expect(prisma.board.findUnique).toHaveBeenCalledWith({
+        where: { id: 'board-1' },
+        include: {
+          workspace: true,
+        },
+      });
+      expect(prisma.board.delete).toHaveBeenCalledWith({
+        where: { id: 'board-1' },
+      });
+      expect(result).toBe(true);
+    });
+
+    it('deletes board when user is both board creator and workspace owner', async () => {
+      const boardWithWorkspace = {
+        id: 'board-1',
+        title: 'My Board',
+        description: null,
+        background: '#0079bf',
+        ownerId: 'user-1',
+        workspaceId: 'workspace-1',
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+      };
+      prisma.board.findUnique = jest.fn().mockResolvedValue(boardWithWorkspace);
+      prisma.board.delete = jest.fn().mockResolvedValue(boardWithWorkspace);
+
+      const result = await service.deleteBoard('board-1', 'user-1');
+
+      expect(prisma.board.delete).toHaveBeenCalledWith({
+        where: { id: 'board-1' },
+      });
+      expect(result).toBe(true);
+    });
+
+    it('throws NotFoundException when boardId is empty', async () => {
+      await expect(service.deleteBoard('', 'user-1')).rejects.toThrow(NotFoundException);
+      expect(prisma.board.findUnique).not.toHaveBeenCalled();
+      expect(prisma.board.delete).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when boardId is whitespace only', async () => {
+      await expect(service.deleteBoard('   ', 'user-1')).rejects.toThrow(NotFoundException);
+      expect(prisma.board.findUnique).not.toHaveBeenCalled();
+      expect(prisma.board.delete).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when board does not exist', async () => {
+      prisma.board.findUnique = jest.fn().mockResolvedValue(null);
+
+      await expect(service.deleteBoard('board-1', 'user-1')).rejects.toThrow(NotFoundException);
+      expect(prisma.board.findUnique).toHaveBeenCalledWith({
+        where: { id: 'board-1' },
+        include: {
+          workspace: true,
+        },
+      });
+      expect(prisma.board.delete).not.toHaveBeenCalled();
+    });
+
+    it('throws ForbiddenException when user is neither board creator nor workspace owner', async () => {
+      const boardWithWorkspace = {
+        id: 'board-1',
+        title: 'My Board',
+        description: null,
+        background: '#0079bf',
+        ownerId: 'user-2',
+        workspaceId: 'workspace-1',
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-3' },
+      };
+      prisma.board.findUnique = jest.fn().mockResolvedValue(boardWithWorkspace);
+
+      await expect(service.deleteBoard('board-1', 'user-1')).rejects.toThrow(ForbiddenException);
+      expect(prisma.board.findUnique).toHaveBeenCalledWith({
+        where: { id: 'board-1' },
+        include: {
+          workspace: true,
+        },
+      });
+      expect(prisma.board.delete).not.toHaveBeenCalled();
     });
   });
 });

@@ -48,5 +48,11 @@ export class BoardsResolver {
       input.background
     );
   }
+
+  @Mutation(() => Boolean)
+  @AuthGuard()
+  async deleteBoard(@Args('id') id: string, @Context('user') user: User) {
+    return this.boardsService.deleteBoard(id, user.id);
+  }
 }
 

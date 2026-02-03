@@ -172,5 +172,44 @@ export class BoardsService {
       },
     });
   }
+
+  async deleteBoard(boardId: string, userId: string) {
+    // Validate boardId is provided
+    if (!boardId || boardId.trim() === '') {
+      throw new NotFoundException('Board ID is required');
+    }
+
+    // Find the board with its workspace
+    const board = await this.prisma.board.findUnique({
+      where: { id: boardId },
+      include: {
+        workspace: true,
+      },
+    });
+
+    if (!board) {
+      throw new NotFoundException('Board not found');
+    }
+
+    // Check if user is the board creator (ownerId)
+    const isBoardCreator = board.ownerId === userId;
+
+    // Check if user is the workspace owner
+    const isWorkspaceOwner = board.workspace.ownerId === userId;
+
+    // Allow deletion if user is either the board creator or workspace owner
+    if (!isBoardCreator && !isWorkspaceOwner) {
+      throw new ForbiddenException(
+        'Only the board creator or workspace owner can delete this board'
+      );
+    }
+
+    // Delete the board (lists and cards will be deleted in cascade due to onDelete: Cascade)
+    await this.prisma.board.delete({
+      where: { id: boardId },
+    });
+
+    return true;
+  }
 }
 
