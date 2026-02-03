@@ -8,6 +8,7 @@ describe('BoardsResolver', () => {
     workspaceBoards: jest.fn(),
     board: jest.fn(),
     updateBoard: jest.fn(),
+    deleteBoard: jest.fn(),
   } as unknown as BoardsService;
   const resolver = new BoardsResolver(boardsService);
 
@@ -116,6 +117,16 @@ describe('BoardsResolver', () => {
       '#ff0000'
     );
     expect(result).toBe(updatedBoard);
+  });
+
+  it('deletes a board for the current user', async () => {
+    const user = { id: 'user-1' } as User;
+    boardsService.deleteBoard = jest.fn().mockResolvedValue(true);
+
+    const result = await resolver.deleteBoard('board-1', user);
+
+    expect(boardsService.deleteBoard).toHaveBeenCalledWith('board-1', 'user-1');
+    expect(result).toBe(true);
   });
 });
 
