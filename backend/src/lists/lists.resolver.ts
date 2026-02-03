@@ -37,5 +37,11 @@ export class ListsResolver {
   ) {
     return this.listsService.archiveList(input.id, input.archived, user.id);
   }
+
+  @Mutation(() => Boolean)
+  @AuthGuard()
+  async deleteList(@Args('id') id: string, @Context('user') user: User) {
+    return this.listsService.deleteList(id, user.id);
+  }
 }
 
