@@ -11,6 +11,7 @@ import { validateEnv } from './config/env.validation';
 import { WorkspacesModule } from './workspaces/workspaces.module';
 import { BoardsModule } from './boards/boards.module';
 import { ListsModule } from './lists/lists.module';
+import { CardsModule } from './cards/cards.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { ListsModule } from './lists/lists.module';
     WorkspacesModule,
     BoardsModule,
     ListsModule,
+    CardsModule,
     HealthModule,
   ],
 })
