@@ -56,5 +56,47 @@ export class ListsService {
       },
     });
   }
+
+  async updateList(listId: string, title: string, userId: string) {
+    // Validate listId is provided
+    if (!listId || listId.trim() === '') {
+      throw new NotFoundException('List ID is required');
+    }
+
+    // Validate title is provided
+    if (!title || title.trim() === '') {
+      throw new NotFoundException('Title is required');
+    }
+
+    // Find the list with its board and workspace
+    const list = await this.prisma.list.findUnique({
+      where: { id: listId },
+      include: {
+        board: {
+          include: {
+            workspace: true,
+          },
+        },
+      },
+    });
+
+    if (!list) {
+      throw new NotFoundException('List not found');
+    }
+
+    // Check if user is a member of the workspace (throws ForbiddenException if not)
+    await this.workspacesService.requireWorkspaceAccess(list.board.workspaceId, userId);
+
+    // Update the list
+    return this.prisma.list.update({
+      where: { id: listId },
+      data: {
+        title,
+      },
+      include: {
+        board: true,
+      },
+    });
+  }
 }
 
