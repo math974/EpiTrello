@@ -58,5 +58,54 @@ export class CommentsService {
       },
     });
   }
+
+  async deleteComment(commentId: string, userId: string) {
+    // Validate commentId is provided
+    if (!commentId || commentId.trim() === '') {
+      throw new NotFoundException('Comment ID is required');
+    }
+
+    // Find the comment with its author, card, list, board and workspace
+    const comment = await this.prisma.comment.findUnique({
+      where: { id: commentId },
+      include: {
+        author: true,
+        card: {
+          include: {
+            list: {
+              include: {
+                board: {
+                  include: {
+                    workspace: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!comment) {
+      throw new NotFoundException('Comment not found');
+    }
+
+    // Check if user is the author OR the workspace owner
+    const isAuthor = comment.authorId === userId;
+    const isWorkspaceOwner = comment.card.list.board.workspace.ownerId === userId;
+
+    if (!isAuthor && !isWorkspaceOwner) {
+      throw new ForbiddenException(
+        'Only the comment author or workspace owner can delete this comment'
+      );
+    }
+
+    // Delete the comment
+    await this.prisma.comment.delete({
+      where: { id: commentId },
+    });
+
+    return true;
+  }
 }
 

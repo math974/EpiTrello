@@ -10,6 +10,8 @@ describe('CommentsService', () => {
     },
     comment: {
       create: jest.fn(),
+      findUnique: jest.fn(),
+      delete: jest.fn(),
     },
   } as unknown as PrismaService;
   const workspacesService = {
@@ -252,6 +254,219 @@ describe('CommentsService', () => {
         'user-2'
       );
       expect(prisma.comment.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteComment', () => {
+    it('deletes a comment when user is the author', async () => {
+      const commentWithCard = {
+        id: 'comment-1',
+        content: 'This is a comment',
+        cardId: 'card-1',
+        authorId: 'user-1',
+        author: {
+          id: 'user-1',
+          username: 'testuser',
+          email: 'test@example.com',
+        },
+        card: {
+          id: 'card-1',
+          title: 'My Card',
+          listId: 'list-1',
+          list: {
+            id: 'list-1',
+            title: 'My List',
+            boardId: 'board-1',
+            board: {
+              id: 'board-1',
+              title: 'My Board',
+              workspaceId: 'workspace-1',
+              workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-2' },
+            },
+          },
+        },
+      };
+      prisma.comment.findUnique = jest.fn().mockResolvedValue(commentWithCard);
+      prisma.comment.delete = jest.fn().mockResolvedValue(commentWithCard);
+
+      const result = await service.deleteComment('comment-1', 'user-1');
+
+      expect(prisma.comment.findUnique).toHaveBeenCalledWith({
+        where: { id: 'comment-1' },
+        include: {
+          author: true,
+          card: {
+            include: {
+              list: {
+                include: {
+                  board: {
+                    include: {
+                      workspace: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+      expect(prisma.comment.delete).toHaveBeenCalledWith({
+        where: { id: 'comment-1' },
+      });
+      expect(result).toBe(true);
+    });
+
+    it('deletes a comment when user is the workspace owner', async () => {
+      const commentWithCard = {
+        id: 'comment-1',
+        content: 'This is a comment',
+        cardId: 'card-1',
+        authorId: 'user-2',
+        author: {
+          id: 'user-2',
+          username: 'author',
+          email: 'author@example.com',
+        },
+        card: {
+          id: 'card-1',
+          title: 'My Card',
+          listId: 'list-1',
+          list: {
+            id: 'list-1',
+            title: 'My List',
+            boardId: 'board-1',
+            board: {
+              id: 'board-1',
+              title: 'My Board',
+              workspaceId: 'workspace-1',
+              workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+            },
+          },
+        },
+      };
+      prisma.comment.findUnique = jest.fn().mockResolvedValue(commentWithCard);
+      prisma.comment.delete = jest.fn().mockResolvedValue(commentWithCard);
+
+      const result = await service.deleteComment('comment-1', 'user-1');
+
+      expect(prisma.comment.findUnique).toHaveBeenCalledWith({
+        where: { id: 'comment-1' },
+        include: {
+          author: true,
+          card: {
+            include: {
+              list: {
+                include: {
+                  board: {
+                    include: {
+                      workspace: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+      expect(prisma.comment.delete).toHaveBeenCalledWith({
+        where: { id: 'comment-1' },
+      });
+      expect(result).toBe(true);
+    });
+
+    it('throws NotFoundException when commentId is empty', async () => {
+      await expect(service.deleteComment('', 'user-1')).rejects.toThrow(NotFoundException);
+      expect(prisma.comment.findUnique).not.toHaveBeenCalled();
+      expect(prisma.comment.delete).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when commentId is whitespace only', async () => {
+      await expect(service.deleteComment('   ', 'user-1')).rejects.toThrow(NotFoundException);
+      expect(prisma.comment.findUnique).not.toHaveBeenCalled();
+      expect(prisma.comment.delete).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when comment does not exist', async () => {
+      prisma.comment.findUnique = jest.fn().mockResolvedValue(null);
+
+      await expect(service.deleteComment('comment-1', 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+      expect(prisma.comment.findUnique).toHaveBeenCalledWith({
+        where: { id: 'comment-1' },
+        include: {
+          author: true,
+          card: {
+            include: {
+              list: {
+                include: {
+                  board: {
+                    include: {
+                      workspace: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+      expect(prisma.comment.delete).not.toHaveBeenCalled();
+    });
+
+    it('throws ForbiddenException when user is neither author nor workspace owner', async () => {
+      const commentWithCard = {
+        id: 'comment-1',
+        content: 'This is a comment',
+        cardId: 'card-1',
+        authorId: 'user-2',
+        author: {
+          id: 'user-2',
+          username: 'author',
+          email: 'author@example.com',
+        },
+        card: {
+          id: 'card-1',
+          title: 'My Card',
+          listId: 'list-1',
+          list: {
+            id: 'list-1',
+            title: 'My List',
+            boardId: 'board-1',
+            board: {
+              id: 'board-1',
+              title: 'My Board',
+              workspaceId: 'workspace-1',
+              workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-3' },
+            },
+          },
+        },
+      };
+      prisma.comment.findUnique = jest.fn().mockResolvedValue(commentWithCard);
+
+      await expect(service.deleteComment('comment-1', 'user-1')).rejects.toThrow(
+        ForbiddenException
+      );
+      expect(prisma.comment.findUnique).toHaveBeenCalledWith({
+        where: { id: 'comment-1' },
+        include: {
+          author: true,
+          card: {
+            include: {
+              list: {
+                include: {
+                  board: {
+                    include: {
+                      workspace: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+      expect(prisma.comment.delete).not.toHaveBeenCalled();
     });
   });
 });

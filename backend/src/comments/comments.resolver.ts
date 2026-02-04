@@ -17,5 +17,11 @@ export class CommentsResolver {
   ) {
     return this.commentsService.addComment(input.cardId, input.content, user.id);
   }
+
+  @Mutation(() => Boolean)
+  @AuthGuard()
+  async deleteComment(@Args('id') id: string, @Context('user') user: User) {
+    return this.commentsService.deleteComment(id, user.id);
+  }
 }
 
