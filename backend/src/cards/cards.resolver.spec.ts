@@ -5,6 +5,7 @@ import { CardsService } from './cards.service';
 describe('CardsResolver', () => {
   const cardsService = {
     createCard: jest.fn(),
+    updateCard: jest.fn(),
   } as unknown as CardsService;
   const resolver = new CardsResolver(cardsService);
 
@@ -30,6 +31,71 @@ describe('CardsResolver', () => {
 
     expect(cardsService.createCard).toHaveBeenCalledWith('list-1', 'My Card', 'user-1');
     expect(result).toBe(card);
+  });
+
+  it('updates a card for the current user', async () => {
+    const user = { id: 'user-1' } as User;
+    const input = { id: 'card-1', title: 'Updated Title', description: 'Updated description' };
+    const updatedCard = {
+      id: 'card-1',
+      title: 'Updated Title',
+      description: 'Updated description',
+      position: 0,
+      listId: 'list-1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    cardsService.updateCard = jest.fn().mockResolvedValue(updatedCard);
+
+    const result = await resolver.updateCard(input, user);
+
+    expect(cardsService.updateCard).toHaveBeenCalledWith(
+      'card-1',
+      'user-1',
+      'Updated Title',
+      'Updated description'
+    );
+    expect(result).toBe(updatedCard);
+  });
+
+  it('updates a card with only title for the current user', async () => {
+    const user = { id: 'user-1' } as User;
+    const input = { id: 'card-1', title: 'Updated Title' };
+    const updatedCard = {
+      id: 'card-1',
+      title: 'Updated Title',
+      description: null,
+      position: 0,
+      listId: 'list-1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    cardsService.updateCard = jest.fn().mockResolvedValue(updatedCard);
+
+    const result = await resolver.updateCard(input, user);
+
+    expect(cardsService.updateCard).toHaveBeenCalledWith('card-1', 'user-1', 'Updated Title', undefined);
+    expect(result).toBe(updatedCard);
+  });
+
+  it('updates a card with only description for the current user', async () => {
+    const user = { id: 'user-1' } as User;
+    const input = { id: 'card-1', description: 'New description' };
+    const updatedCard = {
+      id: 'card-1',
+      title: 'My Card',
+      description: 'New description',
+      position: 0,
+      listId: 'list-1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    cardsService.updateCard = jest.fn().mockResolvedValue(updatedCard);
+
+    const result = await resolver.updateCard(input, user);
+
+    expect(cardsService.updateCard).toHaveBeenCalledWith('card-1', 'user-1', undefined, 'New description');
+    expect(result).toBe(updatedCard);
   });
 });
 
