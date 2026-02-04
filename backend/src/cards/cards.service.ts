@@ -254,5 +254,63 @@ export class CardsService {
       });
     }
   }
+
+  async deleteCard(cardId: string, userId: string) {
+    // Validate cardId is provided
+    if (!cardId || cardId.trim() === '') {
+      throw new NotFoundException('Card ID is required');
+    }
+
+    // Find the card with its list, board and workspace
+    const card = await this.prisma.card.findUnique({
+      where: { id: cardId },
+      include: {
+        list: {
+          include: {
+            board: {
+              include: {
+                workspace: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!card) {
+      throw new NotFoundException('Card not found');
+    }
+
+    // Check if user is a member of the workspace (throws ForbiddenException if not)
+    await this.workspacesService.requireWorkspaceAccess(
+      card.list.board.workspaceId,
+      userId
+    );
+
+    // Use a transaction to delete the card and reorganize positions
+    await this.prisma.$transaction(async (tx) => {
+      // Delete the card
+      await tx.card.delete({
+        where: { id: cardId },
+      });
+
+      // Reorganize positions: decrement positions of all cards after the deleted one in the same list
+      await tx.card.updateMany({
+        where: {
+          listId: card.listId,
+          position: {
+            gt: card.position,
+          },
+        },
+        data: {
+          position: {
+            decrement: 1,
+          },
+        },
+      });
+    });
+
+    return true;
+  }
 }
 
