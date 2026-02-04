@@ -5,6 +5,7 @@ import { CommentsService } from './comments.service';
 describe('CommentsResolver', () => {
   const commentsService = {
     addComment: jest.fn(),
+    deleteComment: jest.fn(),
   } as unknown as CommentsService;
   const resolver = new CommentsResolver(commentsService);
 
@@ -40,6 +41,16 @@ describe('CommentsResolver', () => {
       'user-1'
     );
     expect(result).toBe(comment);
+  });
+
+  it('deletes a comment for the current user', async () => {
+    const user = { id: 'user-1' } as User;
+    commentsService.deleteComment = jest.fn().mockResolvedValue(true);
+
+    const result = await resolver.deleteComment('comment-1', user);
+
+    expect(commentsService.deleteComment).toHaveBeenCalledWith('comment-1', 'user-1');
+    expect(result).toBe(true);
   });
 });
 
