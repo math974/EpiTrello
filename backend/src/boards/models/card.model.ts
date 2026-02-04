@@ -14,6 +14,12 @@ export class CardModel {
   @Field(() => Int)
   position!: number;
 
+  @Field(() => Boolean)
+  archived!: boolean;
+
+  @Field(() => Int, { nullable: true })
+  archivedPosition?: number | null;
+
   @Field(() => ID)
   listId!: string;
 

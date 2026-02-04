@@ -6,6 +6,7 @@ describe('CardsResolver', () => {
   const cardsService = {
     createCard: jest.fn(),
     updateCard: jest.fn(),
+    archiveCard: jest.fn(),
   } as unknown as CardsService;
   const resolver = new CardsResolver(cardsService);
 
@@ -96,6 +97,50 @@ describe('CardsResolver', () => {
 
     expect(cardsService.updateCard).toHaveBeenCalledWith('card-1', 'user-1', undefined, 'New description');
     expect(result).toBe(updatedCard);
+  });
+
+  it('archives a card for the current user', async () => {
+    const user = { id: 'user-1' } as User;
+    const input = { id: 'card-1', archived: true };
+    const archivedCard = {
+      id: 'card-1',
+      title: 'My Card',
+      description: null,
+      position: 1,
+      archived: true,
+      archivedPosition: 1,
+      listId: 'list-1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    cardsService.archiveCard = jest.fn().mockResolvedValue(archivedCard);
+
+    const result = await resolver.archiveCard(input, user);
+
+    expect(cardsService.archiveCard).toHaveBeenCalledWith('card-1', true, 'user-1');
+    expect(result).toBe(archivedCard);
+  });
+
+  it('unarchives a card for the current user', async () => {
+    const user = { id: 'user-1' } as User;
+    const input = { id: 'card-1', archived: false };
+    const unarchivedCard = {
+      id: 'card-1',
+      title: 'My Card',
+      description: null,
+      position: 1,
+      archived: false,
+      archivedPosition: null,
+      listId: 'list-1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    cardsService.archiveCard = jest.fn().mockResolvedValue(unarchivedCard);
+
+    const result = await resolver.archiveCard(input, user);
+
+    expect(cardsService.archiveCard).toHaveBeenCalledWith('card-1', false, 'user-1');
+    expect(result).toBe(unarchivedCard);
   });
 });
 
