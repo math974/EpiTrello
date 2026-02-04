@@ -74,10 +74,10 @@ export default function Navbar() {
                   </div>
                 </div>
                 <div className="py-1">
-                  <MenuLink>Profil et visibilité</MenuLink>
-                  <MenuLink>Activité</MenuLink>
-                  <MenuLink>Cartes</MenuLink>
-                  <MenuLink>Paramètres</MenuLink>
+                  <a href='/u/utilisateur/account#profile'><MenuLink>Profil et visibilité</MenuLink></a>
+                  <a href='/u/utilisateur/account#activity'><MenuLink>Activité</MenuLink></a>
+                  <a href='/u/utilisateur/account#settings'><MenuLink>Cartes</MenuLink></a>
+                  <a href='/u/utilisateur/account#settings'><MenuLink>Paramètres</MenuLink></a>
                 </div>
                 <div className="border-t border-gray-100 py-1">
                   <MenuLink>Se déconnecter</MenuLink>
