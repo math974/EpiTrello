@@ -1,4 +1,5 @@
 import { Field, ID, Int, ObjectType } from '@nestjs/graphql';
+import { ListModel } from './list.model';
 
 @ObjectType()
 export class CardModel {
@@ -22,6 +23,9 @@ export class CardModel {
 
   @Field(() => ID)
   listId!: string;
+
+  @Field(() => ListModel, { nullable: true })
+  list?: ListModel | null;
 
   @Field()
   createdAt!: Date;
