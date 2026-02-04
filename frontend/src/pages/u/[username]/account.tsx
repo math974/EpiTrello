@@ -10,11 +10,14 @@ const DEFAULT_USERNAME = 'utilisateur';
 export default function AccountSettingsPage() {
   const router = useRouter();
   const [activeSection, setActiveSection] = useState('profile');
+  const [textSize, setTextSize] = useState<'sm' | 'md' | 'lg'>('md');
   const username = useMemo(() => {
     const value = router.query.username;
     if (typeof value === 'string' && value.trim().length > 0) return value;
     return DEFAULT_USERNAME;
   }, [router.query.username]);
+
+  const containerTextSize = textSize === 'sm' ? 'text-sm' : textSize === 'lg' ? 'text-lg' : 'text-base';
 
   useEffect(() => {
     const updateActive = () => {
@@ -32,7 +35,7 @@ export default function AccountSettingsPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-trello-bg-light">
+    <div className={`min-h-screen bg-trello-bg-light ${containerTextSize}`}>
       <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div>
@@ -183,6 +186,21 @@ export default function AccountSettingsPage() {
                 <CardTitle>Accessibilite</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-trello-navy">Taille du texte</label>
+                  <select
+                    className="mt-2 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-trello-blue"
+                    value={textSize}
+                    onChange={(event) => {
+                      const value = event.target.value as 'sm' | 'md' | 'lg';
+                      setTextSize(value);
+                    }}
+                  >
+                    <option value="sm">Petit</option>
+                    <option value="md">Standard</option>
+                    <option value="lg">Grand</option>
+                  </select>
+                </div>
                 <div>
                   <label className="text-sm font-medium text-trello-navy">Langue</label>
                   <select
