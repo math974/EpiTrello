@@ -25,7 +25,7 @@ export default function OAuthButtons({ loadingProvider = null, onProviderClick }
         variant="outline"
         disabled={isBusy}
         onClick={() => handleOAuth('github')}
-        className="w-full justify-center gap-2 border-slate-300 bg-white/70 text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-900 hover:bg-slate-900 hover:text-white disabled:pointer-events-none disabled:opacity-60"
+        className="w-full justify-center gap-2 border-white/15 bg-white/5 text-white/80 shadow-sm transition hover:-translate-y-0.5 hover:border-white/40 hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:opacity-60"
       >
         {isGithubLoading ? <Spinner /> : <GitHubIcon />}
         {isGithubLoading ? 'Connexion en cours...' : 'Continuer avec GitHub'}
@@ -35,7 +35,7 @@ export default function OAuthButtons({ loadingProvider = null, onProviderClick }
         variant="outline"
         disabled={isBusy}
         onClick={() => handleOAuth('discord')}
-        className="w-full justify-center gap-2 border-slate-300 bg-white/70 text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-900 hover:bg-gradient-to-r hover:from-slate-900 hover:via-slate-800 hover:to-blue-900 hover:text-white disabled:pointer-events-none disabled:opacity-60"
+        className="w-full justify-center gap-2 border-white/15 bg-white/5 text-white/80 shadow-sm transition hover:-translate-y-0.5 hover:border-white/40 hover:bg-gradient-to-r hover:from-slate-900 hover:via-slate-800 hover:to-blue-900 hover:text-white disabled:pointer-events-none disabled:opacity-60"
       >
         {isDiscordLoading ? <Spinner /> : <DiscordIcon />}
         {isDiscordLoading ? 'Connexion en cours...' : 'Continuer avec Discord'}

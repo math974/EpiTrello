@@ -37,35 +37,41 @@ export default function SignupForm({ errorState = 'none', oauthLoadingProvider =
       )}
       <form className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-trello-navy">Nom</label>
+          <label className="block text-sm font-medium text-white/80">Nom</label>
           <Input
             type="text"
             placeholder="Votre nom"
-            className={`mt-1 bg-white/80 ${fieldErrors.name ? 'border-red-300 focus-visible:ring-red-200' : ''}`}
+            className={`mt-1 bg-white/10 text-white placeholder:text-white/40 border-white/10 focus-visible:ring-sky-300 ${
+              fieldErrors.name ? 'border-red-300 focus-visible:ring-red-200' : ''
+            }`}
           />
           {fieldErrors.name && <p className="mt-1 text-xs text-red-600">{fieldErrors.name}</p>}
         </div>
         <div>
-          <label className="block text-sm font-medium text-trello-navy">Email</label>
+          <label className="block text-sm font-medium text-white/80">Email</label>
           <Input
             type="email"
             placeholder="vous@exemple.com"
-            className={`mt-1 bg-white/80 ${fieldErrors.email ? 'border-red-300 focus-visible:ring-red-200' : ''}`}
+            className={`mt-1 bg-white/10 text-white placeholder:text-white/40 border-white/10 focus-visible:ring-sky-300 ${
+              fieldErrors.email ? 'border-red-300 focus-visible:ring-red-200' : ''
+            }`}
           />
           {fieldErrors.email && <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>}
         </div>
         <div>
-          <label className="block text-sm font-medium text-trello-navy">Mot de passe</label>
+          <label className="block text-sm font-medium text-white/80">Mot de passe</label>
           <Input
             type="password"
             placeholder="••••••••"
-            className={`mt-1 bg-white/80 ${fieldErrors.password ? 'border-red-300 focus-visible:ring-red-200' : ''}`}
+            className={`mt-1 bg-white/10 text-white placeholder:text-white/40 border-white/10 focus-visible:ring-sky-300 ${
+              fieldErrors.password ? 'border-red-300 focus-visible:ring-red-200' : ''
+            }`}
           />
           {fieldErrors.password && <p className="mt-1 text-xs text-red-600">{fieldErrors.password}</p>}
         </div>
         <Button
           type="submit"
-          className="w-full bg-trello-blue text-white shadow-lg shadow-blue-200/70 hover:-translate-y-0.5 hover:bg-trello-blue-dark"
+          className="w-full bg-gradient-to-r from-sky-300 to-emerald-300 text-slate-950 shadow-lg shadow-emerald-500/30 hover:-translate-y-0.5"
         >
           Créer un compte
         </Button>
@@ -74,18 +80,18 @@ export default function SignupForm({ errorState = 'none', oauthLoadingProvider =
       <div className="relative">
         <Separator />
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="bg-background px-2 text-xs uppercase text-trello-gray">Ou</span>
+          <span className="bg-slate-950 px-2 text-xs uppercase text-white/50">Ou</span>
         </div>
       </div>
 
       <OAuthButtons loadingProvider={oauthLoadingProvider} />
-      <p className="text-center text-xs text-trello-gray">
+      <p className="text-center text-xs text-white/50">
         Si votre compte OAuth existe deja, vous serez connecte automatiquement.
       </p>
 
-      <div className="text-center text-sm text-trello-gray">
+      <div className="text-center text-sm text-white/60">
         Deja un compte ?{' '}
-        <Link href="/login" className="text-trello-blue hover:underline">
+        <Link href="/login" className="text-sky-300 hover:underline">
           Se connecter
         </Link>
       </div>
