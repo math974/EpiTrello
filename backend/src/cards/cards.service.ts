@@ -135,5 +135,124 @@ export class CardsService {
       },
     });
   }
+
+  async archiveCard(cardId: string, archived: boolean, userId: string) {
+    // Validate cardId is provided
+    if (!cardId || cardId.trim() === '') {
+      throw new NotFoundException('Card ID is required');
+    }
+
+    // Find the card with its list, board and workspace
+    const card = await this.prisma.card.findUnique({
+      where: { id: cardId },
+      include: {
+        list: {
+          include: {
+            board: {
+              include: {
+                workspace: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!card) {
+      throw new NotFoundException('Card not found');
+    }
+
+    // Check if user is a member of the workspace (throws ForbiddenException if not)
+    await this.workspacesService.requireWorkspaceAccess(
+      card.list.board.workspaceId,
+      userId
+    );
+
+    // Use a transaction to update archived status and reorganize positions if archiving
+    if (archived && !card.archived) {
+      // Archiving: store original position and reorganize positions of non-archived cards after this one
+      await this.prisma.$transaction(async (tx) => {
+        // Update the card archived status and store original position
+        await tx.card.update({
+          where: { id: cardId },
+          data: {
+            archived: true,
+            archivedPosition: card.position, // Store original position
+          },
+        });
+
+        // Reorganize positions: decrement positions of all non-archived cards after the archived one
+        await tx.card.updateMany({
+          where: {
+            listId: card.listId,
+            archived: false,
+            position: {
+              gt: card.position,
+            },
+          },
+          data: {
+            position: {
+              decrement: 1,
+            },
+          },
+        });
+      });
+
+      // Return the updated card
+      return this.prisma.card.findUnique({
+        where: { id: cardId },
+        include: {
+          list: true,
+        },
+      });
+    } else if (!archived && card.archived) {
+      // Unarchiving: restore original position and reorganize other cards
+      const originalPosition = card.archivedPosition ?? 0;
+
+      await this.prisma.$transaction(async (tx) => {
+        // First, increment positions of all non-archived cards at or after the original position
+        await tx.card.updateMany({
+          where: {
+            listId: card.listId,
+            archived: false,
+            position: {
+              gte: originalPosition,
+            },
+          },
+          data: {
+            position: {
+              increment: 1,
+            },
+          },
+        });
+
+        // Then restore the card to its original position
+        await tx.card.update({
+          where: { id: cardId },
+          data: {
+            archived: false,
+            position: originalPosition,
+            archivedPosition: null, // Clear archived position
+          },
+        });
+      });
+
+      // Return the updated card
+      return this.prisma.card.findUnique({
+        where: { id: cardId },
+        include: {
+          list: true,
+        },
+      });
+    } else {
+      // No change in archived status, just return the card
+      return this.prisma.card.findUnique({
+        where: { id: cardId },
+        include: {
+          list: true,
+        },
+      });
+    }
+  }
 }
 

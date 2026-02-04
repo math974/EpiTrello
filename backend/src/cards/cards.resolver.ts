@@ -3,6 +3,7 @@ import { User } from '@prisma/client';
 import { AuthGuard } from '../common/guards/gql-auth.decorator';
 import { CreateCardInput } from './dto/create-card.input';
 import { UpdateCardInput } from './dto/update-card.input';
+import { ArchiveCardInput } from './dto/archive-card.input';
 import { CardModel } from '../boards/models/card.model';
 import { CardsService } from './cards.service';
 
@@ -26,6 +27,15 @@ export class CardsResolver {
     @Context('user') user: User
   ) {
     return this.cardsService.updateCard(input.id, user.id, input.title, input.description);
+  }
+
+  @Mutation(() => CardModel)
+  @AuthGuard()
+  async archiveCard(
+    @Args('input', { type: () => ArchiveCardInput }) input: ArchiveCardInput,
+    @Context('user') user: User
+  ) {
+    return this.cardsService.archiveCard(input.id, input.archived, user.id);
   }
 }
 

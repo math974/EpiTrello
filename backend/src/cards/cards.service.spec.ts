@@ -13,7 +13,9 @@ describe('CardsService', () => {
       create: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
+    $transaction: jest.fn(),
   } as unknown as PrismaService;
   const workspacesService = {
     requireWorkspaceAccess: jest.fn(),
@@ -580,6 +582,301 @@ describe('CardsService', () => {
         'user-2'
       );
       expect(prisma.card.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('archiveCard', () => {
+    it('archives a card and reorganizes positions when user is a workspace member and archived is true', async () => {
+      const cardWithList = {
+        id: 'card-1',
+        title: 'My Card',
+        description: null,
+        position: 1,
+        archived: false,
+        archivedPosition: null,
+        listId: 'list-1',
+        list: {
+          id: 'list-1',
+          title: 'My List',
+          boardId: 'board-1',
+          board: {
+            id: 'board-1',
+            title: 'My Board',
+            workspaceId: 'workspace-1',
+            workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+          },
+        },
+      };
+      const archivedCard = {
+        id: 'card-1',
+        title: 'My Card',
+        description: null,
+        position: 1,
+        archived: true,
+        archivedPosition: 1, // Original position stored
+        listId: 'list-1',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        list: cardWithList.list,
+      };
+      prisma.card.findUnique = jest
+        .fn()
+        .mockResolvedValueOnce(cardWithList)
+        .mockResolvedValueOnce(archivedCard);
+      prisma.$transaction = jest.fn().mockImplementation(async (callback) => {
+        const tx = {
+          card: {
+            update: jest.fn().mockResolvedValue(archivedCard),
+            updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+          },
+        };
+        return callback(tx);
+      });
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
+      });
+
+      const result = await service.archiveCard('card-1', true, 'user-1');
+
+      expect(prisma.card.findUnique).toHaveBeenCalledWith({
+        where: { id: 'card-1' },
+        include: {
+          list: {
+            include: {
+              board: {
+                include: {
+                  workspace: true,
+                },
+              },
+            },
+          },
+        },
+      });
+      expect(workspacesService.requireWorkspaceAccess).toHaveBeenCalledWith(
+        'workspace-1',
+        'user-1'
+      );
+      expect(prisma.$transaction).toHaveBeenCalled();
+      expect(result).toBe(archivedCard);
+      expect(result?.archived).toBe(true);
+    });
+
+    it('unarchives a card and restores it to its original position when user is a workspace member and archived is false', async () => {
+      const cardWithList = {
+        id: 'card-1',
+        title: 'My Card',
+        description: null,
+        position: 0,
+        archived: true,
+        archivedPosition: 1, // Original position was 1
+        listId: 'list-1',
+        list: {
+          id: 'list-1',
+          title: 'My List',
+          boardId: 'board-1',
+          board: {
+            id: 'board-1',
+            title: 'My Board',
+            workspaceId: 'workspace-1',
+            workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+          },
+        },
+      };
+      const unarchivedCard = {
+        id: 'card-1',
+        title: 'My Card',
+        description: null,
+        position: 1,
+        archived: false,
+        archivedPosition: null,
+        listId: 'list-1',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        list: cardWithList.list,
+      };
+      prisma.card.findUnique = jest
+        .fn()
+        .mockResolvedValueOnce(cardWithList)
+        .mockResolvedValueOnce(unarchivedCard);
+      prisma.$transaction = jest.fn().mockImplementation(async (callback) => {
+        const tx = {
+          card: {
+            updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+            update: jest.fn().mockResolvedValue(unarchivedCard),
+          },
+        };
+        return callback(tx);
+      });
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
+      });
+
+      const result = await service.archiveCard('card-1', false, 'user-1');
+
+      expect(prisma.$transaction).toHaveBeenCalled();
+      expect(result).toBe(unarchivedCard);
+      expect(result?.archived).toBe(false);
+      expect(result?.position).toBe(1); // Restored to original position
+    });
+
+    it('throws NotFoundException when cardId is empty', async () => {
+      await expect(service.archiveCard('', true, 'user-1')).rejects.toThrow(NotFoundException);
+      expect(prisma.card.findUnique).not.toHaveBeenCalled();
+      expect(workspacesService.requireWorkspaceAccess).not.toHaveBeenCalled();
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when cardId is whitespace only', async () => {
+      await expect(service.archiveCard('   ', true, 'user-1')).rejects.toThrow(NotFoundException);
+      expect(prisma.card.findUnique).not.toHaveBeenCalled();
+      expect(workspacesService.requireWorkspaceAccess).not.toHaveBeenCalled();
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when card does not exist', async () => {
+      prisma.card.findUnique = jest.fn().mockResolvedValue(null);
+
+      await expect(service.archiveCard('card-1', true, 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+      expect(prisma.card.findUnique).toHaveBeenCalledWith({
+        where: { id: 'card-1' },
+        include: {
+          list: {
+            include: {
+              board: {
+                include: {
+                  workspace: true,
+                },
+              },
+            },
+          },
+        },
+      });
+      expect(workspacesService.requireWorkspaceAccess).not.toHaveBeenCalled();
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('throws ForbiddenException when user is not a workspace member', async () => {
+      const cardWithList = {
+        id: 'card-1',
+        title: 'My Card',
+        description: null,
+        position: 0,
+        archived: false,
+        archivedPosition: null,
+        listId: 'list-1',
+        list: {
+          id: 'list-1',
+          title: 'My List',
+          boardId: 'board-1',
+          board: {
+            id: 'board-1',
+            title: 'My Board',
+            workspaceId: 'workspace-1',
+            workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+          },
+        },
+      };
+      prisma.card.findUnique = jest.fn().mockResolvedValue(cardWithList);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockRejectedValue(
+        new ForbiddenException('Access denied')
+      );
+
+      await expect(service.archiveCard('card-1', true, 'user-2')).rejects.toThrow(
+        ForbiddenException
+      );
+      expect(prisma.card.findUnique).toHaveBeenCalledWith({
+        where: { id: 'card-1' },
+        include: {
+          list: {
+            include: {
+              board: {
+                include: {
+                  workspace: true,
+                },
+              },
+            },
+          },
+        },
+      });
+      expect(workspacesService.requireWorkspaceAccess).toHaveBeenCalledWith(
+        'workspace-1',
+        'user-2'
+      );
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when card is already archived and archived is true', async () => {
+      const cardWithList = {
+        id: 'card-1',
+        title: 'My Card',
+        description: null,
+        position: 0,
+        archived: true,
+        archivedPosition: 0,
+        listId: 'list-1',
+        list: {
+          id: 'list-1',
+          title: 'My List',
+          boardId: 'board-1',
+          board: {
+            id: 'board-1',
+            title: 'My Board',
+            workspaceId: 'workspace-1',
+            workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+          },
+        },
+      };
+      prisma.card.findUnique = jest.fn().mockResolvedValue(cardWithList);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
+      });
+
+      const result = await service.archiveCard('card-1', true, 'user-1');
+
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(prisma.card.updateMany).not.toHaveBeenCalled();
+      expect(prisma.card.update).not.toHaveBeenCalled();
+      expect(result).toBe(cardWithList);
+    });
+
+    it('does nothing when card is already unarchived and archived is false', async () => {
+      const cardWithList = {
+        id: 'card-1',
+        title: 'My Card',
+        description: null,
+        position: 0,
+        archived: false,
+        archivedPosition: null,
+        listId: 'list-1',
+        list: {
+          id: 'list-1',
+          title: 'My List',
+          boardId: 'board-1',
+          board: {
+            id: 'board-1',
+            title: 'My Board',
+            workspaceId: 'workspace-1',
+            workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+          },
+        },
+      };
+      prisma.card.findUnique = jest.fn().mockResolvedValue(cardWithList);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
+      });
+
+      const result = await service.archiveCard('card-1', false, 'user-1');
+
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(prisma.card.updateMany).not.toHaveBeenCalled();
+      expect(prisma.card.update).not.toHaveBeenCalled();
+      expect(result).toBe(cardWithList);
     });
   });
 });
