@@ -37,5 +37,11 @@ export class CardsResolver {
   ) {
     return this.cardsService.archiveCard(input.id, input.archived, user.id);
   }
+
+  @Mutation(() => Boolean)
+  @AuthGuard()
+  async deleteCard(@Args('id') id: string, @Context('user') user: User) {
+    return this.cardsService.deleteCard(id, user.id);
+  }
 }
 
