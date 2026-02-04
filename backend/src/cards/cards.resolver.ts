@@ -4,6 +4,7 @@ import { AuthGuard } from '../common/guards/gql-auth.decorator';
 import { CreateCardInput } from './dto/create-card.input';
 import { UpdateCardInput } from './dto/update-card.input';
 import { ArchiveCardInput } from './dto/archive-card.input';
+import { MoveCardInput } from './dto/move-card.input';
 import { CardModel } from '../boards/models/card.model';
 import { CardsService } from './cards.service';
 
@@ -42,6 +43,15 @@ export class CardsResolver {
   @AuthGuard()
   async deleteCard(@Args('id') id: string, @Context('user') user: User) {
     return this.cardsService.deleteCard(id, user.id);
+  }
+
+  @Mutation(() => CardModel)
+  @AuthGuard()
+  async moveCard(
+    @Args('input', { type: () => MoveCardInput }) input: MoveCardInput,
+    @Context('user') user: User
+  ) {
+    return this.cardsService.moveCard(input.cardId, input.toListId, input.toIndex, user.id);
   }
 }
 

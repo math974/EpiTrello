@@ -8,6 +8,7 @@ describe('CardsResolver', () => {
     updateCard: jest.fn(),
     archiveCard: jest.fn(),
     deleteCard: jest.fn(),
+    moveCard: jest.fn(),
   } as unknown as CardsService;
   const resolver = new CardsResolver(cardsService);
 
@@ -152,6 +153,26 @@ describe('CardsResolver', () => {
 
     expect(cardsService.deleteCard).toHaveBeenCalledWith('card-1', 'user-1');
     expect(result).toBe(true);
+  });
+
+  it('moves a card for the current user', async () => {
+    const user = { id: 'user-1' } as User;
+    const input = { cardId: 'card-1', toListId: 'list-2', toIndex: 1 };
+    const movedCard = {
+      id: 'card-1',
+      title: 'My Card',
+      description: null,
+      position: 1,
+      listId: 'list-2',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    cardsService.moveCard = jest.fn().mockResolvedValue(movedCard);
+
+    const result = await resolver.moveCard(input, user);
+
+    expect(cardsService.moveCard).toHaveBeenCalledWith('card-1', 'list-2', 1, 'user-1');
+    expect(result).toBe(movedCard);
   });
 });
 

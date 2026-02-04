@@ -312,5 +312,240 @@ export class CardsService {
 
     return true;
   }
+
+  async moveCard(cardId: string, toListId: string, toIndex: number, userId: string) {
+    // Validate inputs
+    if (!cardId || cardId.trim() === '') {
+      throw new NotFoundException('Card ID is required');
+    }
+
+    if (!toListId || toListId.trim() === '') {
+      throw new NotFoundException('Target list ID is required');
+    }
+
+    if (toIndex < 0) {
+      throw new NotFoundException('Target index must be non-negative');
+    }
+
+    // Find the card with its list, board and workspace
+    const card = await this.prisma.card.findUnique({
+      where: { id: cardId },
+      include: {
+        list: {
+          include: {
+            board: {
+              include: {
+                workspace: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!card) {
+      throw new NotFoundException('Card not found');
+    }
+
+    // Find the target list with its board and workspace
+    const targetList = await this.prisma.list.findUnique({
+      where: { id: toListId },
+      include: {
+        board: {
+          include: {
+            workspace: true,
+          },
+        },
+      },
+    });
+
+    if (!targetList) {
+      throw new NotFoundException('Target list not found');
+    }
+
+    // Check if both lists belong to the same workspace
+    if (card.list.board.workspaceId !== targetList.board.workspaceId) {
+      throw new ForbiddenException('Cannot move card between different workspaces');
+    }
+
+    // Check if user is a member of the workspace (throws ForbiddenException if not)
+    await this.workspacesService.requireWorkspaceAccess(
+      card.list.board.workspaceId,
+      userId
+    );
+
+    const sameList = card.listId === toListId;
+    const currentPosition = card.position;
+
+    // Use a transaction to move the card and reorganize positions
+    await this.prisma.$transaction(async (tx) => {
+      if (sameList) {
+        // Same list: reorganize positions within the same list
+        // Get all non-archived cards in the list, ordered by position
+        const allCardsInList = await tx.card.findMany({
+          where: {
+            listId: card.listId,
+            archived: false,
+          },
+          orderBy: { position: 'asc' },
+        });
+
+        // Find current index of the card being moved
+        const currentIndex = allCardsInList.findIndex((c) => c.id === cardId);
+        if (currentIndex === toIndex) {
+          // No move needed, card is already at the target index
+          return;
+        }
+
+        // Remove the card from the array
+        const cardsWithoutMoved = allCardsInList.filter((c) => c.id !== cardId);
+
+        // Calculate new position based on toIndex
+        let newPosition: number;
+        if (toIndex === 0) {
+          // Moving to the beginning
+          newPosition = 0;
+          // Increment all other positions
+          await tx.card.updateMany({
+            where: {
+              listId: card.listId,
+              archived: false,
+              id: { not: cardId },
+            },
+            data: {
+              position: { increment: 1 },
+            },
+          });
+        } else if (toIndex >= cardsWithoutMoved.length) {
+          // Moving to the end
+          newPosition = cardsWithoutMoved.length;
+        } else {
+          // Moving to a position in the middle
+          const targetCard = cardsWithoutMoved[toIndex];
+          newPosition = targetCard.position;
+
+          if (currentIndex < toIndex) {
+            // Moving down: decrement positions between current and new
+            await tx.card.updateMany({
+              where: {
+                listId: card.listId,
+                archived: false,
+                id: { not: cardId },
+                position: {
+                  gt: currentPosition,
+                  lte: newPosition,
+                },
+              },
+              data: {
+                position: { decrement: 1 },
+              },
+            });
+          } else {
+            // Moving up: increment positions between new and current
+            await tx.card.updateMany({
+              where: {
+                listId: card.listId,
+                archived: false,
+                id: { not: cardId },
+                position: {
+                  gte: newPosition,
+                  lt: currentPosition,
+                },
+              },
+              data: {
+                position: { increment: 1 },
+              },
+            });
+          }
+        }
+
+        // Update the card's position
+        await tx.card.update({
+          where: { id: cardId },
+          data: {
+            position: newPosition,
+          },
+        });
+      } else {
+        // Cross-list: move card to a different list
+        // Get all non-archived cards in the target list, ordered by position
+        const cardsInTargetList = await tx.card.findMany({
+          where: {
+            listId: toListId,
+            archived: false,
+          },
+          orderBy: { position: 'asc' },
+        });
+
+        // Calculate new position in target list
+        let newPosition: number;
+        if (toIndex === 0) {
+          // Moving to the beginning of target list
+          newPosition = 0;
+          // Increment all positions in target list
+          await tx.card.updateMany({
+            where: {
+              listId: toListId,
+              archived: false,
+            },
+            data: {
+              position: { increment: 1 },
+            },
+          });
+        } else if (toIndex >= cardsInTargetList.length) {
+          // Moving to the end of target list
+          newPosition = cardsInTargetList.length;
+        } else {
+          // Moving to a position in the middle of target list
+          const targetCard = cardsInTargetList[toIndex];
+          newPosition = targetCard.position;
+          // Increment positions from target position onwards
+          await tx.card.updateMany({
+            where: {
+              listId: toListId,
+              archived: false,
+              position: {
+                gte: newPosition,
+              },
+            },
+            data: {
+              position: { increment: 1 },
+            },
+          });
+        }
+
+        // Decrement positions in source list (cards after the moved card)
+        await tx.card.updateMany({
+          where: {
+            listId: card.listId,
+            archived: false,
+            position: {
+              gt: currentPosition,
+            },
+          },
+          data: {
+            position: { decrement: 1 },
+          },
+        });
+
+        // Update the card: change listId and position
+        await tx.card.update({
+          where: { id: cardId },
+          data: {
+            listId: toListId,
+            position: newPosition,
+          },
+        });
+      }
+    });
+
+    // Return the updated card
+    return this.prisma.card.findUnique({
+      where: { id: cardId },
+      include: {
+        list: true,
+      },
+    });
+  }
 }
 
