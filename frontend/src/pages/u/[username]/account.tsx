@@ -10,6 +10,7 @@ const DEFAULT_USERNAME = 'utilisateur';
 export default function AccountSettingsPage() {
   const router = useRouter();
   const [activeSection, setActiveSection] = useState('profile');
+  const [appearance, setAppearance] = useState<'light' | 'dark' | 'system'>('system');
   const username = useMemo(() => {
     const value = router.query.username;
     if (typeof value === 'string' && value.trim().length > 0) return value;
@@ -156,6 +157,32 @@ export default function AccountSettingsPage() {
                   <div>
                     <label className="text-sm font-medium text-trello-navy">Confirmation</label>
                     <Input className="mt-2" type="password" placeholder="Confirmez le mot de passe" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-trello-navy">Apparence</label>
+                  <div className="mt-2 grid gap-2 md:grid-cols-3">
+                    <Button
+                      type="button"
+                      variant={appearance === 'light' ? 'default' : 'outline'}
+                      onClick={() => setAppearance('light')}
+                    >
+                      Clair
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={appearance === 'dark' ? 'default' : 'outline'}
+                      onClick={() => setAppearance('dark')}
+                    >
+                      Sombre
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={appearance === 'system' ? 'default' : 'outline'}
+                      onClick={() => setAppearance('system')}
+                    >
+                      Systeme
+                    </Button>
                   </div>
                 </div>
                 <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
