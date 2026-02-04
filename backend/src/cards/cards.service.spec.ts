@@ -1067,5 +1067,235 @@ describe('CardsService', () => {
       expect(prisma.$transaction).not.toHaveBeenCalled();
     });
   });
+
+  describe('moveCard', () => {
+    const cardWithList = {
+      id: 'card-1',
+      title: 'My Card',
+      description: null,
+      position: 1,
+      archived: false,
+      archivedPosition: null,
+      listId: 'list-1',
+      list: {
+        id: 'list-1',
+        title: 'My List',
+        boardId: 'board-1',
+        board: {
+          id: 'board-1',
+          title: 'My Board',
+          workspaceId: 'workspace-1',
+          workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        },
+      },
+    };
+
+    const targetList = {
+      id: 'list-2',
+      title: 'Target List',
+      boardId: 'board-1',
+      board: {
+        id: 'board-1',
+        title: 'My Board',
+        workspaceId: 'workspace-1',
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+      },
+    };
+
+    it('moves a card within the same list to the beginning when user is a workspace member', async () => {
+      const allCards = [
+        { id: 'card-1', position: 1 },
+        { id: 'card-2', position: 2 },
+        { id: 'card-3', position: 3 },
+      ];
+      prisma.card.findUnique = jest
+        .fn()
+        .mockResolvedValueOnce(cardWithList)
+        .mockResolvedValueOnce(cardWithList);
+      prisma.list.findUnique = jest.fn().mockResolvedValue(cardWithList.list);
+      prisma.$transaction = jest.fn().mockImplementation(async (callback) => {
+        const tx = {
+          card: {
+            findMany: jest.fn().mockResolvedValue(allCards),
+            updateMany: jest.fn().mockResolvedValue({ count: 2 }),
+            update: jest.fn().mockResolvedValue({ ...cardWithList, position: 0 }),
+          },
+        };
+        return callback(tx);
+      });
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
+      });
+
+      const result = await service.moveCard('card-1', 'list-1', 0, 'user-1');
+
+      expect(prisma.$transaction).toHaveBeenCalled();
+      expect(result).toBeDefined();
+    });
+
+    it('moves a card within the same list to the end when user is a workspace member', async () => {
+      const allCards = [
+        { id: 'card-1', position: 1 },
+        { id: 'card-2', position: 2 },
+        { id: 'card-3', position: 3 },
+      ];
+      prisma.card.findUnique = jest
+        .fn()
+        .mockResolvedValueOnce(cardWithList)
+        .mockResolvedValueOnce({ ...cardWithList, position: 3 });
+      prisma.list.findUnique = jest.fn().mockResolvedValue(cardWithList.list);
+      prisma.$transaction = jest.fn().mockImplementation(async (callback) => {
+        const tx = {
+          card: {
+            findMany: jest.fn().mockResolvedValue(allCards),
+            updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+            update: jest.fn().mockResolvedValue({ ...cardWithList, position: 3 }),
+          },
+        };
+        return callback(tx);
+      });
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
+      });
+
+      const result = await service.moveCard('card-1', 'list-1', 3, 'user-1');
+
+      expect(prisma.$transaction).toHaveBeenCalled();
+      expect(result).toBeDefined();
+    });
+
+    it('moves a card to a different list when user is a workspace member', async () => {
+      const targetListCards = [
+        { id: 'card-4', position: 0 },
+        { id: 'card-5', position: 1 },
+      ];
+      prisma.card.findUnique = jest
+        .fn()
+        .mockResolvedValueOnce(cardWithList)
+        .mockResolvedValueOnce({ ...cardWithList, listId: 'list-2', position: 1 });
+      prisma.list.findUnique = jest.fn().mockResolvedValue(targetList);
+      prisma.$transaction = jest.fn().mockImplementation(async (callback) => {
+        const tx = {
+          card: {
+            findMany: jest
+              .fn()
+              .mockResolvedValueOnce([{ id: 'card-2', position: 2 }]) // Cards in source list without moved card
+              .mockResolvedValueOnce(targetListCards), // Cards in target list
+            updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+            update: jest.fn().mockResolvedValue({ ...cardWithList, listId: 'list-2', position: 1 }),
+          },
+        };
+        return callback(tx);
+      });
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
+      });
+
+      const result = await service.moveCard('card-1', 'list-2', 1, 'user-1');
+
+      expect(prisma.$transaction).toHaveBeenCalled();
+      expect(result).toBeDefined();
+    });
+
+    it('does nothing when card is already at the target index in same list', async () => {
+      const allCards = [
+        { id: 'card-1', position: 1 },
+        { id: 'card-2', position: 2 },
+      ];
+      prisma.card.findUnique = jest
+        .fn()
+        .mockResolvedValueOnce(cardWithList)
+        .mockResolvedValueOnce(cardWithList);
+      prisma.list.findUnique = jest.fn().mockResolvedValue(cardWithList.list);
+      prisma.$transaction = jest.fn().mockImplementation(async (callback) => {
+        const tx = {
+          card: {
+            findMany: jest.fn().mockResolvedValue(allCards),
+            updateMany: jest.fn(),
+            update: jest.fn(),
+          },
+        };
+        return callback(tx);
+      });
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
+      });
+
+      const result = await service.moveCard('card-1', 'list-1', 1, 'user-1');
+
+      expect(prisma.$transaction).toHaveBeenCalled();
+      expect(result).toBeDefined();
+    });
+
+    it('throws NotFoundException when cardId is empty', async () => {
+      await expect(service.moveCard('', 'list-1', 0, 'user-1')).rejects.toThrow(NotFoundException);
+      expect(prisma.card.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when toListId is empty', async () => {
+      await expect(service.moveCard('card-1', '', 0, 'user-1')).rejects.toThrow(NotFoundException);
+      expect(prisma.card.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when toIndex is negative', async () => {
+      await expect(service.moveCard('card-1', 'list-1', -1, 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+      expect(prisma.card.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when card does not exist', async () => {
+      prisma.card.findUnique = jest.fn().mockResolvedValue(null);
+
+      await expect(service.moveCard('card-1', 'list-1', 0, 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+      expect(prisma.list.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when target list does not exist', async () => {
+      prisma.card.findUnique = jest.fn().mockResolvedValue(cardWithList);
+      prisma.list.findUnique = jest.fn().mockResolvedValue(null);
+
+      await expect(service.moveCard('card-1', 'list-2', 0, 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+    });
+
+    it('throws ForbiddenException when moving between different workspaces', async () => {
+      const differentWorkspaceList = {
+        ...targetList,
+        board: {
+          ...targetList.board,
+          workspaceId: 'workspace-2',
+          workspace: { id: 'workspace-2', name: 'Other', ownerId: 'user-2' },
+        },
+      };
+      prisma.card.findUnique = jest.fn().mockResolvedValue(cardWithList);
+      prisma.list.findUnique = jest.fn().mockResolvedValue(differentWorkspaceList);
+
+      await expect(service.moveCard('card-1', 'list-2', 0, 'user-1')).rejects.toThrow(
+        ForbiddenException
+      );
+      expect(workspacesService.requireWorkspaceAccess).not.toHaveBeenCalled();
+    });
+
+    it('throws ForbiddenException when user is not a workspace member', async () => {
+      prisma.card.findUnique = jest.fn().mockResolvedValue(cardWithList);
+      prisma.list.findUnique = jest.fn().mockResolvedValue(targetList);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockRejectedValue(
+        new ForbiddenException('Access denied')
+      );
+
+      await expect(service.moveCard('card-1', 'list-2', 0, 'user-2')).rejects.toThrow(
+        ForbiddenException
+      );
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+  });
 });
 
