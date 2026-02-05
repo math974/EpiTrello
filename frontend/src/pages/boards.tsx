@@ -1,5 +1,5 @@
-import Link from 'next/link';
 import { useState } from 'react';
+import Navbar from '../components/Navbar';
 
 const RECENT_BOARDS = [
   { id: 'board-1', name: 'Lancement mobile' },
@@ -45,27 +45,7 @@ export default function BoardsPage() {
   };
   return (
     <div className="min-h-screen bg-trello-bg-light">
-      <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-trello-blue text-white">
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="3" y="3" width="7" height="18" rx="1.5" />
-                <rect x="14" y="3" width="7" height="11" rx="1.5" />
-              </svg>
-            </div>
-            <span className="text-lg font-semibold text-trello-navy">EpiTrello</span>
-          </div>
-          <div className="flex items-center gap-4 text-sm text-trello-gray">
-            <Link href="/u/utilisateur/account" className="hover:text-trello-navy">
-              Mon compte
-            </Link>
-            <Link href="/boards-legacy" className="text-trello-blue hover:underline">
-              Ancienne page
-            </Link>
-          </div>
-        </div>
-      </header>
+      <Navbar />
 
       <main className="mx-auto grid max-w-6xl gap-6 px-6 py-8 md:grid-cols-[260px,1fr]">
         <aside className="space-y-6">
