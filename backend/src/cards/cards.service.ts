@@ -547,5 +547,187 @@ export class CardsService {
       },
     });
   }
+
+  async addLabelToCard(cardId: string, labelId: string, userId: string) {
+    // Validate inputs
+    if (!cardId || cardId.trim() === '') {
+      throw new NotFoundException('Card ID is required');
+    }
+
+    if (!labelId || labelId.trim() === '') {
+      throw new NotFoundException('Label ID is required');
+    }
+
+    // Find the card with its list, board and workspace
+    const card = await this.prisma.card.findUnique({
+      where: { id: cardId },
+      include: {
+        list: {
+          include: {
+            board: {
+              include: {
+                workspace: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!card) {
+      throw new NotFoundException('Card not found');
+    }
+
+    // Find the label with its workspace
+    const label = await this.prisma.label.findUnique({
+      where: { id: labelId },
+      include: {
+        workspace: true,
+      },
+    });
+
+    if (!label) {
+      throw new NotFoundException('Label not found');
+    }
+
+    // Check if label belongs to the same workspace as the card
+    if (label.workspaceId !== card.list.board.workspaceId) {
+      throw new ForbiddenException('Label does not belong to the same workspace as the card');
+    }
+
+    // Check if user is a member of the workspace (throws ForbiddenException if not)
+    await this.workspacesService.requireWorkspaceAccess(
+      card.list.board.workspaceId,
+      userId
+    );
+
+    // Check if the label is already attached to the card (prevent duplicates)
+    const existingRelation = await this.prisma.cardLabel.findUnique({
+      where: {
+        cardId_labelId: {
+          cardId,
+          labelId,
+        },
+      },
+    });
+
+    if (existingRelation) {
+      // Label is already attached, return the card without error
+      return this.prisma.card.findUnique({
+        where: { id: cardId },
+        include: {
+          list: true,
+        },
+      });
+    }
+
+    // Create the relation
+    await this.prisma.cardLabel.create({
+      data: {
+        cardId,
+        labelId,
+      },
+    });
+
+    // Return the updated card
+    return this.prisma.card.findUnique({
+      where: { id: cardId },
+      include: {
+        list: true,
+      },
+    });
+  }
+
+  async removeLabelFromCard(cardId: string, labelId: string, userId: string) {
+    // Validate inputs
+    if (!cardId || cardId.trim() === '') {
+      throw new NotFoundException('Card ID is required');
+    }
+
+    if (!labelId || labelId.trim() === '') {
+      throw new NotFoundException('Label ID is required');
+    }
+
+    // Find the card with its list, board and workspace
+    const card = await this.prisma.card.findUnique({
+      where: { id: cardId },
+      include: {
+        list: {
+          include: {
+            board: {
+              include: {
+                workspace: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!card) {
+      throw new NotFoundException('Card not found');
+    }
+
+    // Find the label with its workspace
+    const label = await this.prisma.label.findUnique({
+      where: { id: labelId },
+      include: {
+        workspace: true,
+      },
+    });
+
+    if (!label) {
+      throw new NotFoundException('Label not found');
+    }
+
+    // Check if label belongs to the same workspace as the card
+    if (label.workspaceId !== card.list.board.workspaceId) {
+      throw new ForbiddenException('Label does not belong to the same workspace as the card');
+    }
+
+    // Check if user is a member of the workspace (throws ForbiddenException if not)
+    await this.workspacesService.requireWorkspaceAccess(
+      card.list.board.workspaceId,
+      userId
+    );
+
+    // Check if the relation exists
+    const existingRelation = await this.prisma.cardLabel.findUnique({
+      where: {
+        cardId_labelId: {
+          cardId,
+          labelId,
+        },
+      },
+    });
+
+    if (!existingRelation) {
+      // Relation doesn't exist, return the card without error (idempotent)
+      return this.prisma.card.findUnique({
+        where: { id: cardId },
+        include: {
+          list: true,
+        },
+      });
+    }
+
+    // Delete the relation
+    await this.prisma.cardLabel.delete({
+      where: {
+        cardId_labelId: {
+          cardId,
+          labelId,
+        },
+      },
+    });
+
+    // Return the updated card
+    return this.prisma.card.findUnique({
+      where: { id: cardId },
+      include: {
+        list: true,
+      },
+    });
+  }
 }
 
