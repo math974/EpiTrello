@@ -24,6 +24,9 @@ export class CardModel {
   @Field(() => Date, { nullable: true })
   dueDate?: Date | null;
 
+  @Field(() => Boolean)
+  done!: boolean;
+
   @Field(() => ID)
   listId!: string;
 
