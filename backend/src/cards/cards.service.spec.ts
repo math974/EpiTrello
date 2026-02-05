@@ -15,6 +15,14 @@ describe('CardsService', () => {
       update: jest.fn(),
       updateMany: jest.fn(),
     },
+    label: {
+      findUnique: jest.fn(),
+    },
+    cardLabel: {
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      delete: jest.fn(),
+    },
     $transaction: jest.fn(),
   } as unknown as PrismaService;
   const workspacesService = {
@@ -1295,6 +1303,343 @@ describe('CardsService', () => {
         ForbiddenException
       );
       expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('addLabelToCard', () => {
+    const cardWithList = {
+      id: 'card-1',
+      title: 'My Card',
+      description: null,
+      position: 0,
+      archived: false,
+      listId: 'list-1',
+      list: {
+        id: 'list-1',
+        title: 'My List',
+        boardId: 'board-1',
+        board: {
+          id: 'board-1',
+          title: 'My Board',
+          workspaceId: 'workspace-1',
+          workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        },
+      },
+    };
+
+    const labelWithWorkspace = {
+      id: 'label-1',
+      name: 'Important',
+      color: '#ff0000',
+      workspaceId: 'workspace-1',
+      workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+    };
+
+    it('adds a label to a card successfully', async () => {
+      prisma.card.findUnique = jest.fn().mockResolvedValue(cardWithList);
+      prisma.label.findUnique = jest.fn().mockResolvedValue(labelWithWorkspace);
+      prisma.cardLabel.findUnique = jest.fn().mockResolvedValue(null);
+      prisma.cardLabel.create = jest.fn().mockResolvedValue({
+        cardId: 'card-1',
+        labelId: 'label-1',
+        createdAt: new Date(),
+      });
+      prisma.card.findUnique = jest
+        .fn()
+        .mockResolvedValueOnce(cardWithList)
+        .mockResolvedValueOnce(cardWithList);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
+      });
+
+      const result = await service.addLabelToCard('card-1', 'label-1', 'user-1');
+
+      expect(prisma.card.findUnique).toHaveBeenCalledTimes(2);
+      expect(prisma.label.findUnique).toHaveBeenCalledWith({
+        where: { id: 'label-1' },
+        include: { workspace: true },
+      });
+      expect(workspacesService.requireWorkspaceAccess).toHaveBeenCalledWith(
+        'workspace-1',
+        'user-1'
+      );
+      expect(prisma.cardLabel.findUnique).toHaveBeenCalledWith({
+        where: {
+          cardId_labelId: {
+            cardId: 'card-1',
+            labelId: 'label-1',
+          },
+        },
+      });
+      expect(prisma.cardLabel.create).toHaveBeenCalledWith({
+        data: {
+          cardId: 'card-1',
+          labelId: 'label-1',
+        },
+      });
+      expect(result).toBe(cardWithList);
+    });
+
+    it('does not throw error if label is already attached (idempotent)', async () => {
+      const existingRelation = {
+        cardId: 'card-1',
+        labelId: 'label-1',
+        createdAt: new Date(),
+      };
+      prisma.card.findUnique = jest
+        .fn()
+        .mockResolvedValueOnce(cardWithList)
+        .mockResolvedValueOnce(cardWithList);
+      prisma.label.findUnique = jest.fn().mockResolvedValue(labelWithWorkspace);
+      prisma.cardLabel.findUnique = jest.fn().mockResolvedValue(existingRelation);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
+      });
+
+      const result = await service.addLabelToCard('card-1', 'label-1', 'user-1');
+
+      expect(prisma.cardLabel.findUnique).toHaveBeenCalledWith({
+        where: {
+          cardId_labelId: {
+            cardId: 'card-1',
+            labelId: 'label-1',
+          },
+        },
+      });
+      expect(prisma.cardLabel.create).not.toHaveBeenCalled();
+      expect(result).toBe(cardWithList);
+    });
+
+    it('throws NotFoundException when card is not found', async () => {
+      prisma.card.findUnique = jest.fn().mockResolvedValue(null);
+
+      await expect(service.addLabelToCard('card-1', 'label-1', 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+      expect(prisma.label.findUnique).not.toHaveBeenCalled();
+      expect(prisma.cardLabel.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when label is not found', async () => {
+      prisma.card.findUnique = jest.fn().mockResolvedValue(cardWithList);
+      prisma.label.findUnique = jest.fn().mockResolvedValue(null);
+
+      await expect(service.addLabelToCard('card-1', 'label-1', 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+      expect(prisma.cardLabel.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('throws ForbiddenException when label belongs to different workspace', async () => {
+      const labelDifferentWorkspace = {
+        id: 'label-1',
+        name: 'Important',
+        color: '#ff0000',
+        workspaceId: 'workspace-2',
+        workspace: { id: 'workspace-2', name: 'Other', ownerId: 'user-2' },
+      };
+      prisma.card.findUnique = jest.fn().mockResolvedValue(cardWithList);
+      prisma.label.findUnique = jest.fn().mockResolvedValue(labelDifferentWorkspace);
+
+      await expect(service.addLabelToCard('card-1', 'label-1', 'user-1')).rejects.toThrow(
+        ForbiddenException
+      );
+      expect(prisma.cardLabel.findUnique).not.toHaveBeenCalled();
+      expect(workspacesService.requireWorkspaceAccess).not.toHaveBeenCalled();
+    });
+
+    it('throws ForbiddenException when user is not a workspace member', async () => {
+      prisma.card.findUnique = jest.fn().mockResolvedValue(cardWithList);
+      prisma.label.findUnique = jest.fn().mockResolvedValue(labelWithWorkspace);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockRejectedValue(
+        new ForbiddenException('Access denied')
+      );
+
+      await expect(service.addLabelToCard('card-1', 'label-1', 'user-2')).rejects.toThrow(
+        ForbiddenException
+      );
+      expect(prisma.cardLabel.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when cardId is empty', async () => {
+      await expect(service.addLabelToCard('', 'label-1', 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+    });
+
+    it('throws NotFoundException when labelId is empty', async () => {
+      await expect(service.addLabelToCard('card-1', '', 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+    });
+  });
+
+  describe('removeLabelFromCard', () => {
+    const cardWithList = {
+      id: 'card-1',
+      title: 'My Card',
+      description: null,
+      position: 0,
+      archived: false,
+      listId: 'list-1',
+      list: {
+        id: 'list-1',
+        title: 'My List',
+        boardId: 'board-1',
+        board: {
+          id: 'board-1',
+          title: 'My Board',
+          workspaceId: 'workspace-1',
+          workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        },
+      },
+    };
+
+    const labelWithWorkspace = {
+      id: 'label-1',
+      name: 'Important',
+      color: '#ff0000',
+      workspaceId: 'workspace-1',
+      workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+    };
+
+    it('removes a label from a card successfully', async () => {
+      const existingRelation = {
+        cardId: 'card-1',
+        labelId: 'label-1',
+        createdAt: new Date(),
+      };
+      prisma.card.findUnique = jest
+        .fn()
+        .mockResolvedValueOnce(cardWithList)
+        .mockResolvedValueOnce(cardWithList);
+      prisma.label.findUnique = jest.fn().mockResolvedValue(labelWithWorkspace);
+      prisma.cardLabel.findUnique = jest.fn().mockResolvedValue(existingRelation);
+      prisma.cardLabel.delete = jest.fn().mockResolvedValue(existingRelation);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
+      });
+
+      const result = await service.removeLabelFromCard('card-1', 'label-1', 'user-1');
+
+      expect(prisma.card.findUnique).toHaveBeenCalledTimes(2);
+      expect(prisma.label.findUnique).toHaveBeenCalledWith({
+        where: { id: 'label-1' },
+        include: { workspace: true },
+      });
+      expect(workspacesService.requireWorkspaceAccess).toHaveBeenCalledWith(
+        'workspace-1',
+        'user-1'
+      );
+      expect(prisma.cardLabel.findUnique).toHaveBeenCalledWith({
+        where: {
+          cardId_labelId: {
+            cardId: 'card-1',
+            labelId: 'label-1',
+          },
+        },
+      });
+      expect(prisma.cardLabel.delete).toHaveBeenCalledWith({
+        where: {
+          cardId_labelId: {
+            cardId: 'card-1',
+            labelId: 'label-1',
+          },
+        },
+      });
+      expect(result).toBe(cardWithList);
+    });
+
+    it('does not throw error if label is not attached (idempotent)', async () => {
+      prisma.card.findUnique = jest
+        .fn()
+        .mockResolvedValueOnce(cardWithList)
+        .mockResolvedValueOnce(cardWithList);
+      prisma.label.findUnique = jest.fn().mockResolvedValue(labelWithWorkspace);
+      prisma.cardLabel.findUnique = jest.fn().mockResolvedValue(null);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
+      });
+
+      const result = await service.removeLabelFromCard('card-1', 'label-1', 'user-1');
+
+      expect(prisma.cardLabel.findUnique).toHaveBeenCalledWith({
+        where: {
+          cardId_labelId: {
+            cardId: 'card-1',
+            labelId: 'label-1',
+          },
+        },
+      });
+      expect(prisma.cardLabel.delete).not.toHaveBeenCalled();
+      expect(result).toBe(cardWithList);
+    });
+
+    it('throws NotFoundException when card is not found', async () => {
+      prisma.card.findUnique = jest.fn().mockResolvedValue(null);
+
+      await expect(service.removeLabelFromCard('card-1', 'label-1', 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+      expect(prisma.label.findUnique).not.toHaveBeenCalled();
+      expect(prisma.cardLabel.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when label is not found', async () => {
+      prisma.card.findUnique = jest.fn().mockResolvedValue(cardWithList);
+      prisma.label.findUnique = jest.fn().mockResolvedValue(null);
+
+      await expect(service.removeLabelFromCard('card-1', 'label-1', 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+      expect(prisma.cardLabel.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('throws ForbiddenException when label belongs to different workspace', async () => {
+      const labelDifferentWorkspace = {
+        id: 'label-1',
+        name: 'Important',
+        color: '#ff0000',
+        workspaceId: 'workspace-2',
+        workspace: { id: 'workspace-2', name: 'Other', ownerId: 'user-2' },
+      };
+      prisma.card.findUnique = jest.fn().mockResolvedValue(cardWithList);
+      prisma.label.findUnique = jest.fn().mockResolvedValue(labelDifferentWorkspace);
+
+      await expect(service.removeLabelFromCard('card-1', 'label-1', 'user-1')).rejects.toThrow(
+        ForbiddenException
+      );
+      expect(prisma.cardLabel.findUnique).not.toHaveBeenCalled();
+      expect(workspacesService.requireWorkspaceAccess).not.toHaveBeenCalled();
+    });
+
+    it('throws ForbiddenException when user is not a workspace member', async () => {
+      prisma.card.findUnique = jest.fn().mockResolvedValue(cardWithList);
+      prisma.label.findUnique = jest.fn().mockResolvedValue(labelWithWorkspace);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockRejectedValue(
+        new ForbiddenException('Access denied')
+      );
+
+      await expect(service.removeLabelFromCard('card-1', 'label-1', 'user-2')).rejects.toThrow(
+        ForbiddenException
+      );
+      expect(prisma.cardLabel.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when cardId is empty', async () => {
+      await expect(service.removeLabelFromCard('', 'label-1', 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+    });
+
+    it('throws NotFoundException when labelId is empty', async () => {
+      await expect(service.removeLabelFromCard('card-1', '', 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
     });
   });
 });

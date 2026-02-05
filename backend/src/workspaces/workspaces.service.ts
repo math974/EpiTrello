@@ -97,6 +97,7 @@ export class WorkspacesService {
             createdAt: 'desc',
           },
         },
+        labels: true,
       },
     });
     if (!workspace) {

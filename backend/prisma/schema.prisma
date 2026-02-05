@@ -61,6 +61,7 @@ model Card {
   listId          String
   list            List     @relation(fields: [listId], references: [id], onDelete: Cascade)
   comments        Comment[]
+  labels          CardLabel[]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -110,15 +111,28 @@ model WorkspaceMember {
 }
 
 model Label {
-  id          String   @id @default(uuid())
+  id          String      @id @default(uuid())
   name        String
   color       String
   workspaceId String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  cards       CardLabel[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 
   @@index([workspaceId])
+}
+
+model CardLabel {
+  cardId    String
+  card      Card    @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  labelId   String
+  label     Label   @relation(fields: [labelId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([cardId, labelId])
+  @@index([cardId])
+  @@index([labelId])
 }
 
 
