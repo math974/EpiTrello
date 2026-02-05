@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, NotFoundException, forwardRef } from '@nestjs/common';
 import { Workspace, WorkspaceMember, WorkspaceRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivitiesService } from '../activities/activities.service';
@@ -8,6 +8,7 @@ import { ActivityType } from '../activities/models/activity-type.enum';
 export class WorkspacesService {
   constructor(
     private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => ActivitiesService))
     private readonly activitiesService: ActivitiesService
   ) {}
 
