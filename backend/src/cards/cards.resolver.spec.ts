@@ -11,6 +11,8 @@ describe('CardsResolver', () => {
     moveCard: jest.fn(),
     addLabelToCard: jest.fn(),
     removeLabelFromCard: jest.fn(),
+    setCardDueDate: jest.fn(),
+    clearCardDueDate: jest.fn(),
   } as unknown as CardsService;
   const resolver = new CardsResolver(cardsService);
 
@@ -214,6 +216,52 @@ describe('CardsResolver', () => {
     const result = await resolver.removeLabelFromCard(input, user);
 
     expect(cardsService.removeLabelFromCard).toHaveBeenCalledWith('card-1', 'label-1', 'user-1');
+    expect(result).toBe(card);
+  });
+
+  it('sets due date on a card for the current user', async () => {
+    const user = { id: 'user-1' } as User;
+    const input = { cardId: 'card-1', dueDate: '2024-12-31T23:59:59Z' };
+    const card = {
+      id: 'card-1',
+      title: 'My Card',
+      description: null,
+      position: 0,
+      dueDate: new Date('2024-12-31T23:59:59Z'),
+      listId: 'list-1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    cardsService.setCardDueDate = jest.fn().mockResolvedValue(card);
+
+    const result = await resolver.setCardDueDate(input, user);
+
+    expect(cardsService.setCardDueDate).toHaveBeenCalledWith(
+      'card-1',
+      new Date('2024-12-31T23:59:59Z'),
+      'user-1'
+    );
+    expect(result).toBe(card);
+  });
+
+  it('clears due date on a card for the current user', async () => {
+    const user = { id: 'user-1' } as User;
+    const input = { cardId: 'card-1' };
+    const card = {
+      id: 'card-1',
+      title: 'My Card',
+      description: null,
+      position: 0,
+      dueDate: null,
+      listId: 'list-1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    cardsService.clearCardDueDate = jest.fn().mockResolvedValue(card);
+
+    const result = await resolver.clearCardDueDate(input, user);
+
+    expect(cardsService.clearCardDueDate).toHaveBeenCalledWith('card-1', 'user-1');
     expect(result).toBe(card);
   });
 });
