@@ -17,7 +17,10 @@ describe('CommentsService', () => {
   const workspacesService = {
     requireWorkspaceAccess: jest.fn(),
   } as unknown as WorkspacesService;
-  const service = new CommentsService(prisma, workspacesService);
+  const activitiesService = {
+    logActivity: jest.fn().mockResolvedValue(undefined),
+  } as unknown as any;
+  const service = new CommentsService(prisma, workspacesService, activitiesService);
 
   beforeEach(() => {
     jest.clearAllMocks();

@@ -1,13 +1,18 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Workspace, WorkspaceMember, WorkspaceRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { ActivitiesService } from '../activities/activities.service';
+import { ActivityType } from '../activities/models/activity-type.enum';
 
 @Injectable()
 export class WorkspacesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly activitiesService: ActivitiesService
+  ) {}
 
-  createWorkspace(ownerId: string, name: string) {
-    return this.prisma.workspace.create({
+  async createWorkspace(ownerId: string, name: string) {
+    const workspace = await this.prisma.workspace.create({
       data: {
         name,
         ownerId,
@@ -22,6 +27,20 @@ export class WorkspacesService {
         owner: true,
       },
     });
+
+    // Log activity (non-blocking)
+    this.activitiesService
+      .logActivity({
+        workspaceId: workspace.id,
+        actorId: ownerId,
+        type: ActivityType.WORKSPACE_CREATED,
+        metadata: { name },
+      })
+      .catch(() => {
+        // Ignore logging errors
+      });
+
+    return workspace;
   }
 
   private async requireWorkspace(workspaceId: string): Promise<Workspace> {
@@ -119,13 +138,27 @@ export class WorkspacesService {
   async updateWorkspace(workspaceId: string, userId: string, name: string) {
     await this.requireWorkspaceOwner(workspaceId, userId);
 
-    return this.prisma.workspace.update({
+    const workspace = await this.prisma.workspace.update({
       where: { id: workspaceId },
       data: { name },
       include: {
         owner: true,
       },
     });
+
+    // Log activity (non-blocking)
+    this.activitiesService
+      .logActivity({
+        workspaceId,
+        actorId: userId,
+        type: ActivityType.WORKSPACE_UPDATED,
+        metadata: { name },
+      })
+      .catch(() => {
+        // Ignore logging errors
+      });
+
+    return workspace;
   }
 
   async deleteWorkspace(workspaceId: string, userId: string) {
@@ -163,7 +196,7 @@ export class WorkspacesService {
       throw new ForbiddenException('User is already a member of this workspace');
     }
 
-    return this.prisma.workspaceMember.create({
+    const membership = await this.prisma.workspaceMember.create({
       data: {
         userId: user.id,
         workspaceId,
@@ -174,6 +207,20 @@ export class WorkspacesService {
         workspace: true,
       },
     });
+
+    // Log activity (non-blocking)
+    this.activitiesService
+      .logActivity({
+        workspaceId,
+        actorId: ownerId,
+        type: ActivityType.WORKSPACE_MEMBER_ADDED,
+        metadata: { userId: user.id, email: user.email, username: user.username },
+      })
+      .catch(() => {
+        // Ignore logging errors
+      });
+
+    return membership;
   }
 
   async removeWorkspaceMember(workspaceId: string, ownerId: string, userIdToRemove: string) {
@@ -215,6 +262,18 @@ export class WorkspacesService {
       },
     });
 
+    // Log activity (non-blocking)
+    this.activitiesService
+      .logActivity({
+        workspaceId,
+        actorId: ownerId,
+        type: ActivityType.WORKSPACE_MEMBER_REMOVED,
+        metadata: { userId: userIdToRemove },
+      })
+      .catch(() => {
+        // Ignore logging errors
+      });
+
     return true;
   }
 
@@ -254,6 +313,18 @@ export class WorkspacesService {
         },
       },
     });
+
+    // Log activity (non-blocking)
+    this.activitiesService
+      .logActivity({
+        workspaceId,
+        actorId: userId,
+        type: ActivityType.WORKSPACE_MEMBER_LEFT,
+        metadata: {},
+      })
+      .catch(() => {
+        // Ignore logging errors
+      });
 
     return true;
   }

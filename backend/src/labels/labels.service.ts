@@ -1,12 +1,15 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
+import { ActivitiesService } from '../activities/activities.service';
+import { ActivityType } from '../activities/models/activity-type.enum';
 
 @Injectable()
 export class LabelsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly workspacesService: WorkspacesService
+    private readonly workspacesService: WorkspacesService,
+    private readonly activitiesService: ActivitiesService
   ) {}
 
   async createLabel(workspaceId: string, name: string, color: string, userId: string) {
@@ -29,13 +32,27 @@ export class LabelsService {
     await this.workspacesService.requireWorkspaceAccess(workspaceId, userId);
 
     // Create the label
-    return this.prisma.label.create({
+    const label = await this.prisma.label.create({
       data: {
         name: name.trim(),
         color: color.trim(),
         workspaceId,
       },
     });
+
+    // Log activity (non-blocking)
+    this.activitiesService
+      .logActivity({
+        workspaceId,
+        actorId: userId,
+        type: ActivityType.LABEL_CREATED,
+        metadata: { labelId: label.id, name: name.trim(), color: color.trim() },
+      })
+      .catch(() => {
+        // Ignore logging errors
+      });
+
+    return label;
   }
 
   async updateLabel(
@@ -97,10 +114,24 @@ export class LabelsService {
     }
 
     // Update the label
-    return this.prisma.label.update({
+    const updatedLabel = await this.prisma.label.update({
       where: { id: labelId },
       data: updateData,
     });
+
+    // Log activity (non-blocking)
+    this.activitiesService
+      .logActivity({
+        workspaceId: label.workspaceId,
+        actorId: userId,
+        type: ActivityType.LABEL_UPDATED,
+        metadata: { labelId, ...updateData },
+      })
+      .catch(() => {
+        // Ignore logging errors
+      });
+
+    return updatedLabel;
   }
 
   async deleteLabel(labelId: string, userId: string) {
@@ -123,6 +154,18 @@ export class LabelsService {
 
     // Check if user is a member of the workspace (throws ForbiddenException if not)
     await this.workspacesService.requireWorkspaceAccess(label.workspaceId, userId);
+
+    // Log activity before deletion (non-blocking)
+    this.activitiesService
+      .logActivity({
+        workspaceId: label.workspaceId,
+        actorId: userId,
+        type: ActivityType.LABEL_DELETED,
+        metadata: { labelId, name: label.name },
+      })
+      .catch(() => {
+        // Ignore logging errors
+      });
 
     // Delete the label
     await this.prisma.label.delete({
