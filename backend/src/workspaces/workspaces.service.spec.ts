@@ -114,6 +114,7 @@ describe('WorkspacesService', () => {
           owner: { id: 'user-1', username: 'user1', email: 'user1@example.com' },
         },
       ],
+      labels: [],
     };
     prisma.workspace.findUnique = jest.fn().mockResolvedValue(workspace);
     prisma.workspaceMember.findUnique = jest.fn().mockResolvedValue({ userId: 'user-1' });
@@ -138,6 +139,7 @@ describe('WorkspacesService', () => {
             createdAt: 'desc',
           },
         },
+        labels: true,
       },
     });
     expect(prisma.workspaceMember.findMany).toHaveBeenCalledWith({
