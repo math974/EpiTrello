@@ -21,6 +21,9 @@ export class CardModel {
   @Field(() => Int, { nullable: true })
   archivedPosition?: number | null;
 
+  @Field(() => Date, { nullable: true })
+  dueDate?: Date | null;
+
   @Field(() => ID)
   listId!: string;
 

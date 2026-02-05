@@ -729,5 +729,93 @@ export class CardsService {
       },
     });
   }
+
+  async setCardDueDate(cardId: string, dueDate: Date, userId: string) {
+    // Validate cardId is provided
+    if (!cardId || cardId.trim() === '') {
+      throw new NotFoundException('Card ID is required');
+    }
+
+    // Find the card with its list, board and workspace
+    const card = await this.prisma.card.findUnique({
+      where: { id: cardId },
+      include: {
+        list: {
+          include: {
+            board: {
+              include: {
+                workspace: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!card) {
+      throw new NotFoundException('Card not found');
+    }
+
+    // Check if user is a member of the workspace (throws ForbiddenException if not)
+    await this.workspacesService.requireWorkspaceAccess(
+      card.list.board.workspaceId,
+      userId
+    );
+
+    // Update the card with the due date
+    return this.prisma.card.update({
+      where: { id: cardId },
+      data: {
+        dueDate,
+      },
+      include: {
+        list: true,
+      },
+    });
+  }
+
+  async clearCardDueDate(cardId: string, userId: string) {
+    // Validate cardId is provided
+    if (!cardId || cardId.trim() === '') {
+      throw new NotFoundException('Card ID is required');
+    }
+
+    // Find the card with its list, board and workspace
+    const card = await this.prisma.card.findUnique({
+      where: { id: cardId },
+      include: {
+        list: {
+          include: {
+            board: {
+              include: {
+                workspace: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!card) {
+      throw new NotFoundException('Card not found');
+    }
+
+    // Check if user is a member of the workspace (throws ForbiddenException if not)
+    await this.workspacesService.requireWorkspaceAccess(
+      card.list.board.workspaceId,
+      userId
+    );
+
+    // Update the card to clear the due date
+    return this.prisma.card.update({
+      where: { id: cardId },
+      data: {
+        dueDate: null,
+      },
+      include: {
+        list: true,
+      },
+    });
+  }
 }
 
