@@ -9,6 +9,7 @@ import { AddLabelToCardInput } from './dto/add-label-to-card.input';
 import { RemoveLabelFromCardInput } from './dto/remove-label-from-card.input';
 import { SetCardDueDateInput } from './dto/set-card-due-date.input';
 import { ClearCardDueDateInput } from './dto/clear-card-due-date.input';
+import { SetCardDoneInput } from './dto/set-card-done.input';
 import { CardModel } from '../boards/models/card.model';
 import { CardsService } from './cards.service';
 
@@ -92,6 +93,15 @@ export class CardsResolver {
     @Context('user') user: User
   ) {
     return this.cardsService.clearCardDueDate(input.cardId, user.id);
+  }
+
+  @Mutation(() => CardModel)
+  @AuthGuard()
+  async setCardDone(
+    @Args('input', { type: () => SetCardDoneInput }) input: SetCardDoneInput,
+    @Context('user') user: User
+  ) {
+    return this.cardsService.setCardDone(input.cardId, input.done, user.id);
   }
 }
 

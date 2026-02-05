@@ -1868,5 +1868,136 @@ describe('CardsService', () => {
       expect(prisma.card.update).not.toHaveBeenCalled();
     });
   });
+
+  describe('setCardDone', () => {
+    const cardWithList = {
+      id: 'card-1',
+      title: 'My Card',
+      description: null,
+      position: 0,
+      archived: false,
+      dueDate: null,
+      done: false,
+      listId: 'list-1',
+      list: {
+        id: 'list-1',
+        title: 'My List',
+        boardId: 'board-1',
+        board: {
+          id: 'board-1',
+          title: 'My Board',
+          workspaceId: 'workspace-1',
+          workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        },
+      },
+    };
+
+    it('sets done flag to true on a card successfully', async () => {
+      const updatedCard = {
+        ...cardWithList,
+        done: true,
+      };
+      prisma.card.findUnique = jest
+        .fn()
+        .mockResolvedValueOnce(cardWithList)
+        .mockResolvedValueOnce(updatedCard);
+      prisma.card.update = jest.fn().mockResolvedValue(updatedCard);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
+      });
+
+      const result = await service.setCardDone('card-1', true, 'user-1');
+
+      expect(prisma.card.findUnique).toHaveBeenCalledWith({
+        where: { id: 'card-1' },
+        include: {
+          list: {
+            include: {
+              board: {
+                include: {
+                  workspace: true,
+                },
+              },
+            },
+          },
+        },
+      });
+      expect(workspacesService.requireWorkspaceAccess).toHaveBeenCalledWith(
+        'workspace-1',
+        'user-1'
+      );
+      expect(prisma.card.update).toHaveBeenCalledWith({
+        where: { id: 'card-1' },
+        data: {
+          done: true,
+        },
+        include: {
+          list: true,
+        },
+      });
+      expect(result).toBe(updatedCard);
+      expect(result.done).toBe(true);
+    });
+
+    it('sets done flag to false on a card successfully', async () => {
+      const cardWithDoneTrue = {
+        ...cardWithList,
+        done: true,
+      };
+      const updatedCard = {
+        ...cardWithDoneTrue,
+        done: false,
+      };
+      prisma.card.findUnique = jest
+        .fn()
+        .mockResolvedValueOnce(cardWithDoneTrue)
+        .mockResolvedValueOnce(updatedCard);
+      prisma.card.update = jest.fn().mockResolvedValue(updatedCard);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
+      });
+
+      const result = await service.setCardDone('card-1', false, 'user-1');
+
+      expect(prisma.card.update).toHaveBeenCalledWith({
+        where: { id: 'card-1' },
+        data: {
+          done: false,
+        },
+        include: {
+          list: true,
+        },
+      });
+      expect(result).toBe(updatedCard);
+      expect(result.done).toBe(false);
+    });
+
+    it('throws NotFoundException when cardId is empty', async () => {
+      await expect(service.setCardDone('', true, 'user-1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws NotFoundException when card does not exist', async () => {
+      prisma.card.findUnique = jest.fn().mockResolvedValue(null);
+
+      await expect(service.setCardDone('card-1', true, 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+      expect(prisma.card.update).not.toHaveBeenCalled();
+    });
+
+    it('throws ForbiddenException when user is not a workspace member', async () => {
+      prisma.card.findUnique = jest.fn().mockResolvedValue(cardWithList);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockRejectedValue(
+        new ForbiddenException('Access denied')
+      );
+
+      await expect(service.setCardDone('card-1', true, 'user-2')).rejects.toThrow(
+        ForbiddenException
+      );
+      expect(prisma.card.update).not.toHaveBeenCalled();
+    });
+  });
 });
 

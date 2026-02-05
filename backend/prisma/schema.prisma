@@ -59,6 +59,7 @@ model Card {
   archived        Boolean   @default(false)
   archivedPosition Int?     // Store original position when archived
   dueDate         DateTime? // Due date for the card
+  done            Boolean   @default(false) // Done flag for the card
   listId          String
   list            List      @relation(fields: [listId], references: [id], onDelete: Cascade)
   comments        Comment[]
