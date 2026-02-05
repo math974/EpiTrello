@@ -32,6 +32,23 @@ const WORKSPACE_BOARDS: Record<string, { id: string; name: string }[]> = {
   ],
 };
 
+const WORKSPACE_COLLABORATORS: Record<
+  string,
+  { id: string; name: string; email: string; role: 'Admin' | 'Membre'; isMe?: boolean; boards: string[] }[]
+> = {
+  'workspace-1': [
+    { id: 'collab-1', name: 'Hasnain', email: 'hasnain@epitrello.com', role: 'Admin', isMe: true, boards: ['Design system', 'Sprint croissance'] },
+    { id: 'collab-2', name: 'Sarah', email: 'sarah@epitrello.com', role: 'Admin', boards: ['Design system'] },
+    { id: 'collab-3', name: 'Mathieu', email: 'math@epitrello.com', role: 'Membre', boards: ['Sprint croissance'] },
+  ],
+  'workspace-2': [
+    { id: 'collab-4', name: 'Ali', email: 'ali@epitrello.com', role: 'Admin', boards: ['Ops & outils', 'Roadmap Q2'] },
+  ],
+  'workspace-3': [
+    { id: 'collab-5', name: 'Nina', email: 'nina@epitrello.com', role: 'Admin', boards: ['Client A'] },
+  ],
+};
+
 export default function BoardsPage() {
   const [activePanel, setActivePanel] = useState<'tableaux' | { workspaceId: string; view: 'boards' | 'members' | 'settings' } | null>('tableaux');
   const [openWorkspaces, setOpenWorkspaces] = useState<string[]>([]);
@@ -207,6 +224,84 @@ export default function BoardsPage() {
               <div className="mt-4 rounded-xl bg-trello-bg-gray px-4 py-3 text-sm text-trello-gray">
                 Vue: {activePanel.view === 'boards' ? 'Tableaux' : activePanel.view === 'members' ? 'Membres' : 'Parametres'}
               </div>
+              {activePanel.view === 'members' && (
+                <div className="mt-6 space-y-4 text-sm text-trello-gray">
+                  <div className="rounded-xl border border-gray-200 bg-white p-4">
+                    <p className="text-sm font-semibold text-trello-navy">Collaborateurs</p>
+                    <p className="mt-2 text-xs text-trello-gray">
+                      Liste des membres du workspace avec leurs acces.
+                    </p>
+                  </div>
+                  <div className="space-y-3">
+                    {(WORKSPACE_COLLABORATORS[activePanel.workspaceId] ?? []).map((collab) => (
+                      <div key={collab.id} className="rounded-xl border border-gray-200 bg-white p-4">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                          <div>
+                            <p className="text-sm font-semibold text-trello-navy">{collab.name}</p>
+                            <p className="text-xs text-trello-gray">{collab.email}</p>
+                            <div className="mt-2 flex flex-wrap gap-2 text-xs text-trello-gray">
+                              <span className="rounded-full bg-trello-bg-gray px-2 py-1">{collab.role}</span>
+                              <span className="rounded-full bg-trello-bg-gray px-2 py-1">
+                                Tableaux: {collab.boards.join(', ')}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button className="rounded-md border border-gray-200 px-3 py-2 text-xs text-trello-gray hover:bg-gray-50">
+                              Voir les tableaux
+                            </button>
+                            <button className="rounded-md border border-red-200 px-3 py-2 text-xs text-red-700 hover:bg-red-50">
+                              {collab.isMe ? 'Quitter' : 'Supprimer'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {activePanel.view === 'settings' && (
+                <div className="mt-6 space-y-4 text-sm text-trello-gray">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="text-xs font-semibold text-trello-navy">Nom du workspace</label>
+                      <input
+                        className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-trello-blue focus:ring-2 focus:ring-trello-blue/40"
+                        defaultValue={
+                          WORKSPACE_LIST.find((workspace) => workspace.id === activePanel.workspaceId)?.name ??
+                          'Workspace'
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-trello-navy">Visibilite</label>
+                      <select className="mt-2 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-trello-blue focus:ring-2 focus:ring-trello-blue/40">
+                        <option>Prive</option>
+                        <option>Espace de travail</option>
+                        <option>Public</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-end">
+                    <button className="rounded-md bg-trello-blue px-4 py-2 text-sm font-semibold text-white hover:bg-trello-blue-dark">
+                      Enregistrer
+                    </button>
+                  </div>
+                  <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <p className="font-semibold">Zone dangereuse</p>
+                        <p className="text-xs text-red-700">
+                          Supprimer ce workspace effacera tous les tableaux associes. Action irreversible.
+                        </p>
+                      </div>
+                      <button className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">
+                        Supprimer le workspace
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <span>Selectionnez “Tableaux” ou un workspace dans la colonne de gauche.</span>
