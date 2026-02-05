@@ -22,7 +22,10 @@ describe('WorkspacesService', () => {
       findUnique: jest.fn(),
     },
   } as unknown as PrismaService;
-  const service = new WorkspacesService(prisma);
+  const activitiesService = {
+    logActivity: jest.fn().mockResolvedValue(undefined),
+  } as unknown as any;
+  const service = new WorkspacesService(prisma, activitiesService);
 
   beforeEach(() => {
     jest.clearAllMocks();

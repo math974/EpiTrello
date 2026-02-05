@@ -14,6 +14,7 @@ import { ListsModule } from './lists/lists.module';
 import { CardsModule } from './cards/cards.module';
 import { CommentsModule } from './comments/comments.module';
 import { LabelsModule } from './labels/labels.module';
+import { ActivitiesModule } from './activities/activities.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { LabelsModule } from './labels/labels.module';
     }),
     PrismaModule,
     AuthModule,
+    ActivitiesModule,
     WorkspacesModule,
     BoardsModule,
     ListsModule,

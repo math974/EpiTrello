@@ -1,12 +1,15 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
+import { ActivitiesService } from '../activities/activities.service';
+import { ActivityType } from '../activities/models/activity-type.enum';
 
 @Injectable()
 export class CardsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly workspacesService: WorkspacesService
+    private readonly workspacesService: WorkspacesService,
+    private readonly activitiesService: ActivitiesService
   ) {}
 
   async createCard(listId: string, title: string, userId: string) {
@@ -49,7 +52,7 @@ export class CardsService {
     const newPosition = lastCard ? lastCard.position + 1 : 0;
 
     // Create the card with auto-calculated position
-    return this.prisma.card.create({
+    const card = await this.prisma.card.create({
       data: {
         title,
         listId,
@@ -59,6 +62,21 @@ export class CardsService {
         list: true,
       },
     });
+
+    // Log activity (non-blocking)
+    this.activitiesService
+      .logActivity({
+        workspaceId: list.board.workspaceId,
+        boardId: list.boardId,
+        actorId: userId,
+        type: ActivityType.CARD_CREATED,
+        metadata: { title, cardId: card.id, listId },
+      })
+      .catch(() => {
+        // Ignore logging errors
+      });
+
+    return card;
   }
 
   async updateCard(
@@ -127,13 +145,28 @@ export class CardsService {
     }
 
     // Update the card
-    return this.prisma.card.update({
+    const updatedCard = await this.prisma.card.update({
       where: { id: cardId },
       data: updateData,
       include: {
         list: true,
       },
     });
+
+    // Log activity (non-blocking)
+    this.activitiesService
+      .logActivity({
+        workspaceId: card.list.board.workspaceId,
+        boardId: card.list.boardId,
+        actorId: userId,
+        type: ActivityType.CARD_UPDATED,
+        metadata: { cardId, ...updateData },
+      })
+      .catch(() => {
+        // Ignore logging errors
+      });
+
+    return updatedCard;
   }
 
   async archiveCard(cardId: string, archived: boolean, userId: string) {
@@ -197,6 +230,19 @@ export class CardsService {
           },
         });
       });
+
+      // Log activity (non-blocking)
+      this.activitiesService
+        .logActivity({
+          workspaceId: card.list.board.workspaceId,
+          boardId: card.list.boardId,
+          actorId: userId,
+          type: ActivityType.CARD_ARCHIVED,
+          metadata: { cardId, title: card.title },
+        })
+        .catch(() => {
+          // Ignore logging errors
+        });
 
       // Return the updated card
       return this.prisma.card.findUnique({
@@ -309,6 +355,19 @@ export class CardsService {
         },
       });
     });
+
+    // Log activity before deletion (non-blocking)
+    this.activitiesService
+      .logActivity({
+        workspaceId: card.list.board.workspaceId,
+        boardId: card.list.boardId,
+        actorId: userId,
+        type: ActivityType.CARD_DELETED,
+        metadata: { cardId, title: card.title },
+      })
+      .catch(() => {
+        // Ignore logging errors
+      });
 
     return true;
   }
@@ -539,13 +598,33 @@ export class CardsService {
       }
     });
 
-    // Return the updated card
-    return this.prisma.card.findUnique({
+    // Get the updated card
+    const updatedCard = await this.prisma.card.findUnique({
       where: { id: cardId },
       include: {
         list: true,
       },
     });
+
+    // Log activity (non-blocking)
+    this.activitiesService
+      .logActivity({
+        workspaceId: card.list.board.workspaceId,
+        boardId: card.list.boardId,
+        actorId: userId,
+        type: ActivityType.CARD_MOVED,
+        metadata: {
+          cardId,
+          fromListId: card.listId,
+          toListId,
+          toIndex,
+        },
+      })
+      .catch(() => {
+        // Ignore logging errors
+      });
+
+    return updatedCard;
   }
 
   async addLabelToCard(cardId: string, labelId: string, userId: string) {
@@ -628,6 +707,19 @@ export class CardsService {
         labelId,
       },
     });
+
+    // Log activity (non-blocking)
+    this.activitiesService
+      .logActivity({
+        workspaceId: card.list.board.workspaceId,
+        boardId: card.list.boardId,
+        actorId: userId,
+        type: ActivityType.CARD_LABEL_ADDED,
+        metadata: { cardId, labelId, labelName: label.name },
+      })
+      .catch(() => {
+        // Ignore logging errors
+      });
 
     // Return the updated card
     return this.prisma.card.findUnique({
@@ -721,6 +813,19 @@ export class CardsService {
       },
     });
 
+    // Log activity (non-blocking)
+    this.activitiesService
+      .logActivity({
+        workspaceId: card.list.board.workspaceId,
+        boardId: card.list.boardId,
+        actorId: userId,
+        type: ActivityType.CARD_LABEL_REMOVED,
+        metadata: { cardId, labelId, labelName: label.name },
+      })
+      .catch(() => {
+        // Ignore logging errors
+      });
+
     // Return the updated card
     return this.prisma.card.findUnique({
       where: { id: cardId },
@@ -763,7 +868,7 @@ export class CardsService {
     );
 
     // Update the card with the due date
-    return this.prisma.card.update({
+    const updatedCard = await this.prisma.card.update({
       where: { id: cardId },
       data: {
         dueDate,
@@ -772,6 +877,21 @@ export class CardsService {
         list: true,
       },
     });
+
+    // Log activity (non-blocking)
+    this.activitiesService
+      .logActivity({
+        workspaceId: card.list.board.workspaceId,
+        boardId: card.list.boardId,
+        actorId: userId,
+        type: ActivityType.CARD_DUE_DATE_SET,
+        metadata: { cardId, dueDate: dueDate.toISOString() },
+      })
+      .catch(() => {
+        // Ignore logging errors
+      });
+
+    return updatedCard;
   }
 
   async clearCardDueDate(cardId: string, userId: string) {
@@ -807,7 +927,7 @@ export class CardsService {
     );
 
     // Update the card to clear the due date
-    return this.prisma.card.update({
+    const updatedCard = await this.prisma.card.update({
       where: { id: cardId },
       data: {
         dueDate: null,
@@ -816,6 +936,21 @@ export class CardsService {
         list: true,
       },
     });
+
+    // Log activity (non-blocking)
+    this.activitiesService
+      .logActivity({
+        workspaceId: card.list.board.workspaceId,
+        boardId: card.list.boardId,
+        actorId: userId,
+        type: ActivityType.CARD_DUE_DATE_CLEARED,
+        metadata: { cardId },
+      })
+      .catch(() => {
+        // Ignore logging errors
+      });
+
+    return updatedCard;
   }
 
   async setCardDone(cardId: string, done: boolean, userId: string) {
@@ -851,7 +986,7 @@ export class CardsService {
     );
 
     // Update the card with the done flag
-    return this.prisma.card.update({
+    const updatedCard = await this.prisma.card.update({
       where: { id: cardId },
       data: {
         done,
@@ -860,6 +995,21 @@ export class CardsService {
         list: true,
       },
     });
+
+    // Log activity (non-blocking)
+    this.activitiesService
+      .logActivity({
+        workspaceId: card.list.board.workspaceId,
+        boardId: card.list.boardId,
+        actorId: userId,
+        type: ActivityType.CARD_DONE_SET,
+        metadata: { cardId, done },
+      })
+      .catch(() => {
+        // Ignore logging errors
+      });
+
+    return updatedCard;
   }
 }
 

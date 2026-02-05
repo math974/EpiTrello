@@ -1,12 +1,15 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
+import { ActivitiesService } from '../activities/activities.service';
+import { ActivityType } from '../activities/models/activity-type.enum';
 
 @Injectable()
 export class BoardsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly workspacesService: WorkspacesService
+    private readonly workspacesService: WorkspacesService,
+    private readonly activitiesService: ActivitiesService
   ) {}
 
   async createBoard(workspaceId: string, title: string, userId: string) {
@@ -39,7 +42,7 @@ export class BoardsService {
     }
 
     // Create board with owner = creator (userId)
-    return this.prisma.board.create({
+    const board = await this.prisma.board.create({
       data: {
         title,
         workspaceId,
@@ -50,6 +53,21 @@ export class BoardsService {
         workspace: true,
       },
     });
+
+    // Log activity (non-blocking)
+    this.activitiesService
+      .logActivity({
+        workspaceId,
+        boardId: board.id,
+        actorId: userId,
+        type: ActivityType.BOARD_CREATED,
+        metadata: { title },
+      })
+      .catch(() => {
+        // Ignore logging errors
+      });
+
+    return board;
   }
 
   async workspaceBoards(workspaceId: string, userId: string) {
@@ -163,7 +181,7 @@ export class BoardsService {
     }
 
     // Update the board
-    return this.prisma.board.update({
+    const updatedBoard = await this.prisma.board.update({
       where: { id: boardId },
       data: updateData,
       include: {
@@ -171,6 +189,21 @@ export class BoardsService {
         workspace: true,
       },
     });
+
+    // Log activity (non-blocking)
+    this.activitiesService
+      .logActivity({
+        workspaceId: board.workspaceId,
+        boardId,
+        actorId: userId,
+        type: ActivityType.BOARD_UPDATED,
+        metadata: updateData,
+      })
+      .catch(() => {
+        // Ignore logging errors
+      });
+
+    return updatedBoard;
   }
 
   async deleteBoard(boardId: string, userId: string) {
@@ -205,6 +238,7 @@ export class BoardsService {
     }
 
     // Delete the board (lists and cards will be deleted in cascade due to onDelete: Cascade)
+    // Note: We don't log board deletion as the activity would be deleted in cascade
     await this.prisma.board.delete({
       where: { id: boardId },
     });

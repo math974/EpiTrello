@@ -15,7 +15,10 @@ describe('LabelsService', () => {
   const workspacesService = {
     requireWorkspaceAccess: jest.fn(),
   } as unknown as WorkspacesService;
-  const service = new LabelsService(prisma, workspacesService);
+  const activitiesService = {
+    logActivity: jest.fn().mockResolvedValue(undefined),
+  } as unknown as any;
+  const service = new LabelsService(prisma, workspacesService, activitiesService);
 
   beforeEach(() => {
     jest.clearAllMocks();
