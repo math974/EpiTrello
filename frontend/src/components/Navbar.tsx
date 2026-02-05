@@ -1,18 +1,20 @@
+import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
 
 export default function Navbar() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showCreateMenu, setShowCreateMenu] = useState(false);
 
   return (
     <nav className="bg-gradient-to-r from-trello-blue-darker via-trello-blue-dark to-trello-blue h-12 flex items-center justify-between px-4 shadow-md">
       <div className="flex items-center gap-2">
-        <div className="flex items-center gap-2 text-white">
+        <Link href="/boards" className="flex items-center gap-2 text-white">
           <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
             <rect x="3" y="3" width="7" height="18" rx="1.5" />
             <rect x="14" y="3" width="7" height="11" rx="1.5" />
           </svg>
           <span className="font-bold text-xl tracking-tight">EpiTrello</span>
-        </div>
+        </Link>
 
         <div className="hidden md:flex items-center gap-1 ml-4">
           <NavButton>Espaces de travail</NavButton>
@@ -20,9 +22,72 @@ export default function Navbar() {
           <NavButton>Favoris</NavButton>
         </div>
 
-        <button className="ml-2 bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors">
-          Créer
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setShowCreateMenu(!showCreateMenu)}
+            className="ml-2 bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors"
+          >
+            Créer
+          </button>
+          {showCreateMenu && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setShowCreateMenu(false)} />
+              <div className="absolute left-0 top-full z-20 mt-2 w-80 rounded-lg border border-gray-200 bg-white p-4 shadow-xl">
+                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-trello-gray">Creer un tableau</p>
+                <div className="mt-4 space-y-4 text-sm">
+                  <div>
+                    <label className="text-xs font-semibold text-trello-navy">Titre du tableau</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Roadmap marketing"
+                      className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-trello-blue focus:ring-2 focus:ring-trello-blue/40"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-trello-navy">Espace de travail</label>
+                    <select className="mt-2 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-trello-blue focus:ring-2 focus:ring-trello-blue/40">
+                      <option>Epitech</option>
+                      <option>Side project</option>
+                      <option>Clients</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-trello-navy">Visibilite</label>
+                    <div className="mt-2 space-y-2 text-xs text-trello-gray">
+                      <label className="flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2">
+                        <input type="radio" name="visibility" defaultChecked />
+                        <span>Prive (membres du tableau)</span>
+                      </label>
+                      <label className="flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2">
+                        <input type="radio" name="visibility" />
+                        <span>Espace de travail</span>
+                      </label>
+                      <label className="flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2">
+                        <input type="radio" name="visibility" />
+                        <span>Public</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-trello-gray hover:bg-gray-50"
+                      onClick={() => setShowCreateMenu(false)}
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      type="button"
+                      className="w-full rounded-md bg-trello-blue px-3 py-2 text-sm font-semibold text-white hover:bg-trello-blue-dark"
+                    >
+                      Creer
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center gap-3">
@@ -113,4 +178,3 @@ function MenuLink({ children }: ButtonProps) {
     </button>
   );
 }
-
