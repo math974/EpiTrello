@@ -13,6 +13,7 @@ describe('CardsResolver', () => {
     removeLabelFromCard: jest.fn(),
     setCardDueDate: jest.fn(),
     clearCardDueDate: jest.fn(),
+    setCardDone: jest.fn(),
   } as unknown as CardsService;
   const resolver = new CardsResolver(cardsService);
 
@@ -262,6 +263,27 @@ describe('CardsResolver', () => {
     const result = await resolver.clearCardDueDate(input, user);
 
     expect(cardsService.clearCardDueDate).toHaveBeenCalledWith('card-1', 'user-1');
+    expect(result).toBe(card);
+  });
+
+  it('sets done flag on a card for the current user', async () => {
+    const user = { id: 'user-1' } as User;
+    const input = { cardId: 'card-1', done: true };
+    const card = {
+      id: 'card-1',
+      title: 'My Card',
+      description: null,
+      position: 0,
+      done: true,
+      listId: 'list-1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    cardsService.setCardDone = jest.fn().mockResolvedValue(card);
+
+    const result = await resolver.setCardDone(input, user);
+
+    expect(cardsService.setCardDone).toHaveBeenCalledWith('card-1', true, 'user-1');
     expect(result).toBe(card);
   });
 });
