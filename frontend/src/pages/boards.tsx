@@ -6,6 +6,11 @@ const RECENT_BOARDS = [
   { id: 'board-2', name: 'Roadmap produit' },
 ];
 
+const FAVORITE_BOARDS = [
+  { id: 'board-9', name: 'Backlog prioritaire' },
+  { id: 'board-10', name: 'Design review' },
+];
+
 const WORKSPACE_LIST = [
   { id: 'workspace-1', name: 'Epitech' },
   { id: 'workspace-2', name: 'Side project' },
@@ -129,6 +134,25 @@ export default function BoardsPage() {
         <section className="rounded-2xl border border-dashed border-gray-200 bg-white p-6 text-sm text-trello-gray">
           {activePanel === 'tableaux' ? (
             <div>
+              {FAVORITE_BOARDS.length > 0 && (
+                <div className="mb-6">
+                  <p className="mb-3 text-sm font-semibold text-trello-navy">Favoris</p>
+                  <ul className="space-y-2">
+                    {FAVORITE_BOARDS.map((board) => (
+                      <li key={board.id}>
+                        <button
+                          type="button"
+                          className="w-full rounded-lg px-3 py-2 text-left text-trello-gray transition hover:bg-trello-bg-gray hover:text-trello-navy"
+                          onClick={() => console.log('open board', board.id)}
+                        >
+                          {board.name}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               <p className="mb-3 text-sm font-semibold text-trello-navy">Recents</p>
               <ul className="space-y-2">
                 {RECENT_BOARDS.map((board) => (
