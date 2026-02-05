@@ -1642,5 +1642,231 @@ describe('CardsService', () => {
       );
     });
   });
+
+  describe('setCardDueDate', () => {
+    const cardWithList = {
+      id: 'card-1',
+      title: 'My Card',
+      description: null,
+      position: 0,
+      archived: false,
+      dueDate: null,
+      listId: 'list-1',
+      list: {
+        id: 'list-1',
+        title: 'My List',
+        boardId: 'board-1',
+        board: {
+          id: 'board-1',
+          title: 'My Board',
+          workspaceId: 'workspace-1',
+          workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        },
+      },
+    };
+
+    it('sets due date on a card successfully', async () => {
+      const dueDate = new Date('2024-12-31T23:59:59Z');
+      const updatedCard = {
+        ...cardWithList,
+        dueDate,
+      };
+      prisma.card.findUnique = jest
+        .fn()
+        .mockResolvedValueOnce(cardWithList)
+        .mockResolvedValueOnce(updatedCard);
+      prisma.card.update = jest.fn().mockResolvedValue(updatedCard);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
+      });
+
+      const result = await service.setCardDueDate('card-1', dueDate, 'user-1');
+
+      expect(prisma.card.findUnique).toHaveBeenCalledWith({
+        where: { id: 'card-1' },
+        include: {
+          list: {
+            include: {
+              board: {
+                include: {
+                  workspace: true,
+                },
+              },
+            },
+          },
+        },
+      });
+      expect(workspacesService.requireWorkspaceAccess).toHaveBeenCalledWith(
+        'workspace-1',
+        'user-1'
+      );
+      expect(prisma.card.update).toHaveBeenCalledWith({
+        where: { id: 'card-1' },
+        data: {
+          dueDate,
+        },
+        include: {
+          list: true,
+        },
+      });
+      expect(result).toBe(updatedCard);
+      expect(result.dueDate).toEqual(dueDate);
+    });
+
+    it('throws NotFoundException when cardId is empty', async () => {
+      await expect(service.setCardDueDate('', new Date(), 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+    });
+
+    it('throws NotFoundException when card does not exist', async () => {
+      prisma.card.findUnique = jest.fn().mockResolvedValue(null);
+
+      await expect(service.setCardDueDate('card-1', new Date(), 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+      expect(prisma.card.update).not.toHaveBeenCalled();
+    });
+
+    it('throws ForbiddenException when user is not a workspace member', async () => {
+      prisma.card.findUnique = jest.fn().mockResolvedValue(cardWithList);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockRejectedValue(
+        new ForbiddenException('Access denied')
+      );
+
+      await expect(service.setCardDueDate('card-1', new Date(), 'user-2')).rejects.toThrow(
+        ForbiddenException
+      );
+      expect(prisma.card.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('clearCardDueDate', () => {
+    const cardWithDueDate = {
+      id: 'card-1',
+      title: 'My Card',
+      description: null,
+      position: 0,
+      archived: false,
+      dueDate: new Date('2024-12-31T23:59:59Z'),
+      listId: 'list-1',
+      list: {
+        id: 'list-1',
+        title: 'My List',
+        boardId: 'board-1',
+        board: {
+          id: 'board-1',
+          title: 'My Board',
+          workspaceId: 'workspace-1',
+          workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        },
+      },
+    };
+
+    it('clears due date on a card successfully', async () => {
+      const updatedCard = {
+        ...cardWithDueDate,
+        dueDate: null,
+      };
+      prisma.card.findUnique = jest
+        .fn()
+        .mockResolvedValueOnce(cardWithDueDate)
+        .mockResolvedValueOnce(updatedCard);
+      prisma.card.update = jest.fn().mockResolvedValue(updatedCard);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
+      });
+
+      const result = await service.clearCardDueDate('card-1', 'user-1');
+
+      expect(prisma.card.findUnique).toHaveBeenCalledWith({
+        where: { id: 'card-1' },
+        include: {
+          list: {
+            include: {
+              board: {
+                include: {
+                  workspace: true,
+                },
+              },
+            },
+          },
+        },
+      });
+      expect(workspacesService.requireWorkspaceAccess).toHaveBeenCalledWith(
+        'workspace-1',
+        'user-1'
+      );
+      expect(prisma.card.update).toHaveBeenCalledWith({
+        where: { id: 'card-1' },
+        data: {
+          dueDate: null,
+        },
+        include: {
+          list: true,
+        },
+      });
+      expect(result).toBe(updatedCard);
+      expect(result.dueDate).toBeNull();
+    });
+
+    it('clears due date even when card has no due date (idempotent)', async () => {
+      const cardWithoutDueDate = {
+        ...cardWithDueDate,
+        dueDate: null,
+      };
+      const updatedCard = {
+        ...cardWithoutDueDate,
+        dueDate: null,
+      };
+      prisma.card.findUnique = jest
+        .fn()
+        .mockResolvedValueOnce(cardWithoutDueDate)
+        .mockResolvedValueOnce(updatedCard);
+      prisma.card.update = jest.fn().mockResolvedValue(updatedCard);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
+      });
+
+      const result = await service.clearCardDueDate('card-1', 'user-1');
+
+      expect(prisma.card.update).toHaveBeenCalledWith({
+        where: { id: 'card-1' },
+        data: {
+          dueDate: null,
+        },
+        include: {
+          list: true,
+        },
+      });
+      expect(result.dueDate).toBeNull();
+    });
+
+    it('throws NotFoundException when cardId is empty', async () => {
+      await expect(service.clearCardDueDate('', 'user-1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws NotFoundException when card does not exist', async () => {
+      prisma.card.findUnique = jest.fn().mockResolvedValue(null);
+
+      await expect(service.clearCardDueDate('card-1', 'user-1')).rejects.toThrow(NotFoundException);
+      expect(prisma.card.update).not.toHaveBeenCalled();
+    });
+
+    it('throws ForbiddenException when user is not a workspace member', async () => {
+      prisma.card.findUnique = jest.fn().mockResolvedValue(cardWithDueDate);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockRejectedValue(
+        new ForbiddenException('Access denied')
+      );
+
+      await expect(service.clearCardDueDate('card-1', 'user-2')).rejects.toThrow(
+        ForbiddenException
+      );
+      expect(prisma.card.update).not.toHaveBeenCalled();
+    });
+  });
 });
 

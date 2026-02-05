@@ -52,18 +52,19 @@ model List {
 }
 
 model Card {
-  id              String   @id @default(uuid())
+  id              String    @id @default(uuid())
   title           String
   description     String?
-  position        Int      @default(0)
-  archived        Boolean  @default(false)
-  archivedPosition Int?    // Store original position when archived
+  position        Int       @default(0)
+  archived        Boolean   @default(false)
+  archivedPosition Int?     // Store original position when archived
+  dueDate         DateTime? // Due date for the card
   listId          String
-  list            List     @relation(fields: [listId], references: [id], onDelete: Cascade)
+  list            List      @relation(fields: [listId], references: [id], onDelete: Cascade)
   comments        Comment[]
   labels          CardLabel[]
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@index([listId])
 }
