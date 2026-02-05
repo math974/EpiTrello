@@ -2,6 +2,7 @@ import { Field, ID, ObjectType } from '@nestjs/graphql';
 import { BoardModel } from '../../boards/models/board.model';
 import { UserModel } from '../../users/models/user.model';
 import { WorkspaceMemberModel } from './workspace-member.model';
+import { LabelModel } from '../../labels/models/label.model';
 
 @ObjectType()
 export class WorkspaceModel {
@@ -22,6 +23,9 @@ export class WorkspaceModel {
 
   @Field(() => [BoardModel], { nullable: true })
   boards?: BoardModel[];
+
+  @Field(() => [LabelModel], { nullable: true })
+  labels?: LabelModel[];
 
   @Field()
   createdAt!: Date;
