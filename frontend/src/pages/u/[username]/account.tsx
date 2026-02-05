@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import Navbar from '@/components/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/shadcn/ui/card';
 import { Button } from '@/components/shadcn/ui/button';
 import { Input } from '@/components/shadcn/ui/input';
@@ -36,17 +37,7 @@ export default function AccountSettingsPage() {
 
   return (
     <div className={`min-h-screen bg-trello-bg-light ${containerTextSize}`}>
-      <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div>
-            <p className="text-xs uppercase tracking-[0.35em] text-trello-gray">Compte</p>
-            <h1 className="text-2xl font-semibold text-trello-navy">{username}</h1>
-          </div>
-          <Link href="/boards" className="text-sm font-medium text-trello-blue hover:underline">
-            Retour aux tableaux
-          </Link>
-        </div>
-      </header>
+      <Navbar />
 
       <main className="mx-auto grid max-w-6xl gap-6 px-6 py-8 md:grid-cols-[240px,1fr]">
         <aside className="space-y-2">
