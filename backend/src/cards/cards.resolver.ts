@@ -5,6 +5,8 @@ import { CreateCardInput } from './dto/create-card.input';
 import { UpdateCardInput } from './dto/update-card.input';
 import { ArchiveCardInput } from './dto/archive-card.input';
 import { MoveCardInput } from './dto/move-card.input';
+import { AddLabelToCardInput } from './dto/add-label-to-card.input';
+import { RemoveLabelFromCardInput } from './dto/remove-label-from-card.input';
 import { CardModel } from '../boards/models/card.model';
 import { CardsService } from './cards.service';
 
@@ -52,6 +54,24 @@ export class CardsResolver {
     @Context('user') user: User
   ) {
     return this.cardsService.moveCard(input.cardId, input.toListId, input.toIndex, user.id);
+  }
+
+  @Mutation(() => CardModel)
+  @AuthGuard()
+  async addLabelToCard(
+    @Args('input', { type: () => AddLabelToCardInput }) input: AddLabelToCardInput,
+    @Context('user') user: User
+  ) {
+    return this.cardsService.addLabelToCard(input.cardId, input.labelId, user.id);
+  }
+
+  @Mutation(() => CardModel)
+  @AuthGuard()
+  async removeLabelFromCard(
+    @Args('input', { type: () => RemoveLabelFromCardInput }) input: RemoveLabelFromCardInput,
+    @Context('user') user: User
+  ) {
+    return this.cardsService.removeLabelFromCard(input.cardId, input.labelId, user.id);
   }
 }
 
