@@ -1,12 +1,15 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
+import { ActivitiesService } from '../activities/activities.service';
+import { ActivityType } from '../activities/models/activity-type.enum';
 
 @Injectable()
 export class CommentsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly workspacesService: WorkspacesService
+    private readonly workspacesService: WorkspacesService,
+    private readonly activitiesService: ActivitiesService
   ) {}
 
   async addComment(cardId: string, content: string, userId: string) {
@@ -47,7 +50,7 @@ export class CommentsService {
     );
 
     // Create the comment
-    return this.prisma.comment.create({
+    const comment = await this.prisma.comment.create({
       data: {
         content: content.trim(),
         cardId,
@@ -57,6 +60,21 @@ export class CommentsService {
         author: true,
       },
     });
+
+    // Log activity (non-blocking)
+    this.activitiesService
+      .logActivity({
+        workspaceId: card.list.board.workspaceId,
+        boardId: card.list.boardId,
+        actorId: userId,
+        type: ActivityType.COMMENT_ADDED,
+        metadata: { commentId: comment.id, cardId, content: content.trim() },
+      })
+      .catch(() => {
+        // Ignore logging errors
+      });
+
+    return comment;
   }
 
   async deleteComment(commentId: string, userId: string) {
@@ -99,6 +117,19 @@ export class CommentsService {
         'Only the comment author or workspace owner can delete this comment'
       );
     }
+
+    // Log activity before deletion (non-blocking)
+    this.activitiesService
+      .logActivity({
+        workspaceId: comment.card.list.board.workspaceId,
+        boardId: comment.card.list.boardId,
+        actorId: userId,
+        type: ActivityType.COMMENT_DELETED,
+        metadata: { commentId, cardId: comment.cardId },
+      })
+      .catch(() => {
+        // Ignore logging errors
+      });
 
     // Delete the comment
     await this.prisma.comment.delete({

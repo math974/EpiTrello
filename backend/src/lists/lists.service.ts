@@ -1,12 +1,15 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
+import { ActivitiesService } from '../activities/activities.service';
+import { ActivityType } from '../activities/models/activity-type.enum';
 
 @Injectable()
 export class ListsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly workspacesService: WorkspacesService
+    private readonly workspacesService: WorkspacesService,
+    private readonly activitiesService: ActivitiesService
   ) {}
 
   async createList(boardId: string, title: string, userId: string) {
@@ -45,7 +48,7 @@ export class ListsService {
     const newPosition = lastList ? lastList.position + 1 : 0;
 
     // Create the list with auto-calculated position
-    return this.prisma.list.create({
+    const list = await this.prisma.list.create({
       data: {
         title,
         boardId,
@@ -55,6 +58,21 @@ export class ListsService {
         board: true,
       },
     });
+
+    // Log activity (non-blocking)
+    this.activitiesService
+      .logActivity({
+        workspaceId: board.workspaceId,
+        boardId,
+        actorId: userId,
+        type: ActivityType.LIST_CREATED,
+        metadata: { title, listId: list.id },
+      })
+      .catch(() => {
+        // Ignore logging errors
+      });
+
+    return list;
   }
 
   async updateList(listId: string, title: string, userId: string) {
@@ -88,7 +106,7 @@ export class ListsService {
     await this.workspacesService.requireWorkspaceAccess(list.board.workspaceId, userId);
 
     // Update the list
-    return this.prisma.list.update({
+    const updatedList = await this.prisma.list.update({
       where: { id: listId },
       data: {
         title,
@@ -97,6 +115,21 @@ export class ListsService {
         board: true,
       },
     });
+
+    // Log activity (non-blocking)
+    this.activitiesService
+      .logActivity({
+        workspaceId: list.board.workspaceId,
+        boardId: list.boardId,
+        actorId: userId,
+        type: ActivityType.LIST_UPDATED,
+        metadata: { title, listId },
+      })
+      .catch(() => {
+        // Ignore logging errors
+      });
+
+    return updatedList;
   }
 
   async archiveList(listId: string, archived: boolean, userId: string) {
@@ -153,6 +186,19 @@ export class ListsService {
           },
         });
       });
+
+      // Log activity (non-blocking)
+      this.activitiesService
+        .logActivity({
+          workspaceId: list.board.workspaceId,
+          boardId: list.boardId,
+          actorId: userId,
+          type: ActivityType.LIST_ARCHIVED,
+          metadata: { listId, title: list.title },
+        })
+        .catch(() => {
+          // Ignore logging errors
+        });
 
       // Return the updated list
       return this.prisma.list.findUnique({
@@ -326,6 +372,19 @@ export class ListsService {
         )
       );
     });
+
+    // Log activity (non-blocking)
+    this.activitiesService
+      .logActivity({
+        workspaceId: board.workspaceId,
+        boardId,
+        actorId: userId,
+        type: ActivityType.LIST_REORDERED,
+        metadata: { orderedListIds },
+      })
+      .catch(() => {
+        // Ignore logging errors
+      });
 
     return true;
   }

@@ -20,6 +20,7 @@ model User {
   ownedWorkspaces Workspace[] @relation("WorkspaceOwner")
   workspaceMemberships WorkspaceMember[]
   comments  Comment[]
+  activities Activity[]
 }
 
 model Board {
@@ -32,6 +33,7 @@ model Board {
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   lists       List[]
+  activities  Activity[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -97,6 +99,7 @@ model Workspace {
   members   WorkspaceMember[]
   boards    Board[]
   labels    Label[]
+  activities Activity[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -135,6 +138,53 @@ model CardLabel {
   @@id([cardId, labelId])
   @@index([cardId])
   @@index([labelId])
+}
+
+enum ActivityType {
+  WORKSPACE_CREATED
+  WORKSPACE_UPDATED
+  WORKSPACE_MEMBER_ADDED
+  WORKSPACE_MEMBER_REMOVED
+  WORKSPACE_MEMBER_LEFT
+  BOARD_CREATED
+  BOARD_UPDATED
+  LIST_CREATED
+  LIST_UPDATED
+  LIST_ARCHIVED
+  LIST_REORDERED
+  CARD_CREATED
+  CARD_UPDATED
+  CARD_ARCHIVED
+  CARD_DELETED
+  CARD_MOVED
+  CARD_DUE_DATE_SET
+  CARD_DUE_DATE_CLEARED
+  CARD_DONE_SET
+  CARD_LABEL_ADDED
+  CARD_LABEL_REMOVED
+  COMMENT_ADDED
+  COMMENT_DELETED
+  LABEL_CREATED
+  LABEL_UPDATED
+  LABEL_DELETED
+}
+
+model Activity {
+  id          String       @id @default(uuid())
+  workspaceId String
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  boardId     String?
+  board       Board?       @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  actorId     String
+  actor       User         @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  type        ActivityType
+  metadata    Json?        // Flexible JSON metadata for activity-specific data
+  createdAt   DateTime     @default(now())
+
+  @@index([workspaceId])
+  @@index([boardId])
+  @@index([actorId])
+  @@index([createdAt])
 }
 
 
