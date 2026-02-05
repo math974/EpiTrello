@@ -9,6 +9,8 @@ describe('CardsResolver', () => {
     archiveCard: jest.fn(),
     deleteCard: jest.fn(),
     moveCard: jest.fn(),
+    addLabelToCard: jest.fn(),
+    removeLabelFromCard: jest.fn(),
   } as unknown as CardsService;
   const resolver = new CardsResolver(cardsService);
 
@@ -173,6 +175,46 @@ describe('CardsResolver', () => {
 
     expect(cardsService.moveCard).toHaveBeenCalledWith('card-1', 'list-2', 1, 'user-1');
     expect(result).toBe(movedCard);
+  });
+
+  it('adds a label to a card for the current user', async () => {
+    const user = { id: 'user-1' } as User;
+    const input = { cardId: 'card-1', labelId: 'label-1' };
+    const card = {
+      id: 'card-1',
+      title: 'My Card',
+      description: null,
+      position: 0,
+      listId: 'list-1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    cardsService.addLabelToCard = jest.fn().mockResolvedValue(card);
+
+    const result = await resolver.addLabelToCard(input, user);
+
+    expect(cardsService.addLabelToCard).toHaveBeenCalledWith('card-1', 'label-1', 'user-1');
+    expect(result).toBe(card);
+  });
+
+  it('removes a label from a card for the current user', async () => {
+    const user = { id: 'user-1' } as User;
+    const input = { cardId: 'card-1', labelId: 'label-1' };
+    const card = {
+      id: 'card-1',
+      title: 'My Card',
+      description: null,
+      position: 0,
+      listId: 'list-1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    cardsService.removeLabelFromCard = jest.fn().mockResolvedValue(card);
+
+    const result = await resolver.removeLabelFromCard(input, user);
+
+    expect(cardsService.removeLabelFromCard).toHaveBeenCalledWith('card-1', 'label-1', 'user-1');
+    expect(result).toBe(card);
   });
 });
 
