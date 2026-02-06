@@ -15,6 +15,7 @@ import { CardsModule } from './cards/cards.module';
 import { CommentsModule } from './comments/comments.module';
 import { LabelsModule } from './labels/labels.module';
 import { ActivitiesModule } from './activities/activities.module';
+import { ChecklistsModule } from './checklists/checklists.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { ActivitiesModule } from './activities/activities.module';
     CardsModule,
     CommentsModule,
     LabelsModule,
+    ChecklistsModule,
     HealthModule,
   ],
 })
