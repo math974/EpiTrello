@@ -21,6 +21,7 @@ model User {
   workspaceMemberships WorkspaceMember[]
   comments  Comment[]
   activities Activity[]
+  cardAssignments CardAssignee[]
 }
 
 model Board {
@@ -67,6 +68,7 @@ model Card {
   comments        Comment[]
   labels          CardLabel[]
   checklists      Checklist[]
+  assignees       CardAssignee[]
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -163,6 +165,9 @@ enum ActivityType {
   CARD_DONE_SET
   CARD_LABEL_ADDED
   CARD_LABEL_REMOVED
+  CARD_ASSIGNEE_ADDED
+  CARD_ASSIGNEE_REMOVED
+  CARD_ASSIGNEES_SET
   COMMENT_ADDED
   COMMENT_DELETED
   LABEL_CREATED
@@ -212,6 +217,18 @@ model ChecklistItem {
   updatedAt   DateTime  @updatedAt
 
   @@index([checklistId])
+}
+
+model CardAssignee {
+  cardId    String
+  card      Card    @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([cardId, userId])
+  @@index([cardId])
+  @@index([userId])
 }
 
 

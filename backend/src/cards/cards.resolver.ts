@@ -10,6 +10,9 @@ import { RemoveLabelFromCardInput } from './dto/remove-label-from-card.input';
 import { SetCardDueDateInput } from './dto/set-card-due-date.input';
 import { ClearCardDueDateInput } from './dto/clear-card-due-date.input';
 import { SetCardDoneInput } from './dto/set-card-done.input';
+import { AssignUserToCardInput } from './dto/assign-user-to-card.input';
+import { UnassignUserFromCardInput } from './dto/unassign-user-from-card.input';
+import { SetCardAssigneesInput } from './dto/set-card-assignees.input';
 import { CardModel } from '../boards/models/card.model';
 import { CardsService } from './cards.service';
 
@@ -102,6 +105,33 @@ export class CardsResolver {
     @Context('user') user: User
   ) {
     return this.cardsService.setCardDone(input.cardId, input.done, user.id);
+  }
+
+  @Mutation(() => Boolean)
+  @AuthGuard()
+  async assignUserToCard(
+    @Args('input', { type: () => AssignUserToCardInput }) input: AssignUserToCardInput,
+    @Context('user') user: User
+  ) {
+    return this.cardsService.assignUserToCard(input.cardId, input.userId, user.id);
+  }
+
+  @Mutation(() => Boolean)
+  @AuthGuard()
+  async unassignUserFromCard(
+    @Args('input', { type: () => UnassignUserFromCardInput }) input: UnassignUserFromCardInput,
+    @Context('user') user: User
+  ) {
+    return this.cardsService.unassignUserFromCard(input.cardId, input.userId, user.id);
+  }
+
+  @Mutation(() => Boolean)
+  @AuthGuard()
+  async setCardAssignees(
+    @Args('input', { type: () => SetCardAssigneesInput }) input: SetCardAssigneesInput,
+    @Context('user') user: User
+  ) {
+    return this.cardsService.setCardAssignees(input.cardId, input.userIds, user.id);
   }
 }
 

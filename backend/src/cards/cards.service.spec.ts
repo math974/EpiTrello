@@ -23,6 +23,17 @@ describe('CardsService', () => {
       create: jest.fn(),
       delete: jest.fn(),
     },
+    cardAssignee: {
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      delete: jest.fn(),
+      deleteMany: jest.fn(),
+      createMany: jest.fn(),
+    },
+    workspaceMember: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+    },
     $transaction: jest.fn(),
   } as unknown as PrismaService;
   const workspacesService = {
@@ -96,9 +107,10 @@ describe('CardsService', () => {
           listId: 'list-1',
           position: 0,
         },
-        include: {
+        include: expect.objectContaining({
           list: true,
-        },
+          assignees: expect.anything(),
+        }),
       });
       expect(result).toBe(newCard);
       expect(result.position).toBe(0);
@@ -154,9 +166,10 @@ describe('CardsService', () => {
           listId: 'list-1',
           position: 3,
         },
-        include: {
+        include: expect.objectContaining({
           list: true,
-        },
+          assignees: expect.anything(),
+        }),
       });
       expect(result).toBe(newCard);
       expect(result.position).toBe(3);
@@ -321,9 +334,10 @@ describe('CardsService', () => {
         data: {
           title: 'New Title',
         },
-        include: {
+        include: expect.objectContaining({
           list: true,
-        },
+          assignees: expect.anything(),
+        }),
       });
       expect(result).toBe(updatedCard);
       expect(result?.title).toBe('New Title');
@@ -375,9 +389,10 @@ describe('CardsService', () => {
         data: {
           description: 'New description',
         },
-        include: {
+        include: expect.objectContaining({
           list: true,
-        },
+          assignees: expect.anything(),
+        }),
       });
       expect(result).toBe(updatedCard);
       expect(result?.description).toBe('New description');
@@ -430,9 +445,10 @@ describe('CardsService', () => {
           title: 'New Title',
           description: 'New description',
         },
-        include: {
+        include: expect.objectContaining({
           list: true,
-        },
+          assignees: expect.anything(),
+        }),
       });
       expect(result).toBe(updatedCard);
       expect(result?.title).toBe('New Title');
@@ -1709,9 +1725,10 @@ describe('CardsService', () => {
         data: {
           dueDate,
         },
-        include: {
+        include: expect.objectContaining({
           list: true,
-        },
+          assignees: expect.anything(),
+        }),
       });
       expect(result).toBe(updatedCard);
       expect(result.dueDate).toEqual(dueDate);
@@ -1807,9 +1824,10 @@ describe('CardsService', () => {
         data: {
           dueDate: null,
         },
-        include: {
+        include: expect.objectContaining({
           list: true,
-        },
+          assignees: expect.anything(),
+        }),
       });
       expect(result).toBe(updatedCard);
       expect(result.dueDate).toBeNull();
@@ -1841,9 +1859,10 @@ describe('CardsService', () => {
         data: {
           dueDate: null,
         },
-        include: {
+        include: expect.objectContaining({
           list: true,
-        },
+          assignees: expect.anything(),
+        }),
       });
       expect(result.dueDate).toBeNull();
     });
@@ -1935,9 +1954,10 @@ describe('CardsService', () => {
         data: {
           done: true,
         },
-        include: {
+        include: expect.objectContaining({
           list: true,
-        },
+          assignees: expect.anything(),
+        }),
       });
       expect(result).toBe(updatedCard);
       expect(result.done).toBe(true);
@@ -1969,9 +1989,10 @@ describe('CardsService', () => {
         data: {
           done: false,
         },
-        include: {
+        include: expect.objectContaining({
           list: true,
-        },
+          assignees: expect.anything(),
+        }),
       });
       expect(result).toBe(updatedCard);
       expect(result.done).toBe(false);
@@ -2000,6 +2021,363 @@ describe('CardsService', () => {
         ForbiddenException
       );
       expect(prisma.card.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('assignUserToCard', () => {
+    it('assigns a user to a card successfully', async () => {
+      const cardWithRelations = {
+        id: 'card-1',
+        listId: 'list-1',
+        list: {
+          id: 'list-1',
+          boardId: 'board-1',
+          board: {
+            id: 'board-1',
+            workspaceId: 'workspace-1',
+            workspace: {
+              id: 'workspace-1',
+            },
+          },
+        },
+      };
+
+      prisma.card.findUnique = jest.fn().mockResolvedValue(cardWithRelations);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1' },
+      });
+      prisma.workspaceMember.findUnique = jest.fn().mockResolvedValue({
+        userId: 'user-2',
+        workspaceId: 'workspace-1',
+        role: 'MEMBER',
+      });
+      prisma.cardAssignee.findUnique = jest.fn().mockResolvedValue(null);
+      prisma.cardAssignee.create = jest.fn();
+
+      const result = await service.assignUserToCard('card-1', 'user-2', 'user-1');
+
+      expect(prisma.cardAssignee.create).toHaveBeenCalledWith({
+        data: {
+          cardId: 'card-1',
+          userId: 'user-2',
+        },
+      });
+      expect(result).toBe(true);
+    });
+
+    it('is idempotent when user is already assigned', async () => {
+      const cardWithRelations = {
+        id: 'card-1',
+        listId: 'list-1',
+        list: {
+          id: 'list-1',
+          boardId: 'board-1',
+          board: {
+            id: 'board-1',
+            workspaceId: 'workspace-1',
+            workspace: {
+              id: 'workspace-1',
+            },
+          },
+        },
+      };
+
+      prisma.card.findUnique = jest.fn().mockResolvedValue(cardWithRelations);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1' },
+      });
+      prisma.workspaceMember.findUnique = jest.fn().mockResolvedValue({
+        userId: 'user-2',
+        workspaceId: 'workspace-1',
+        role: 'MEMBER',
+      });
+      prisma.cardAssignee.findUnique = jest.fn().mockResolvedValue({
+        cardId: 'card-1',
+        userId: 'user-2',
+      });
+
+      const result = await service.assignUserToCard('card-1', 'user-2', 'user-1');
+
+      expect(prisma.cardAssignee.create).not.toHaveBeenCalled();
+      expect(result).toBe(true);
+    });
+
+    it('throws NotFoundException when cardId is empty', async () => {
+      await expect(service.assignUserToCard('', 'user-2', 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+    });
+
+    it('throws NotFoundException when userId is empty', async () => {
+      await expect(service.assignUserToCard('card-1', '', 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+    });
+
+    it('throws NotFoundException when card is not found', async () => {
+      prisma.card.findUnique = jest.fn().mockResolvedValue(null);
+
+      await expect(service.assignUserToCard('card-1', 'user-2', 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+    });
+
+    it('throws ForbiddenException when user is not a workspace member', async () => {
+      const cardWithRelations = {
+        id: 'card-1',
+        listId: 'list-1',
+        list: {
+          id: 'list-1',
+          boardId: 'board-1',
+          board: {
+            id: 'board-1',
+            workspaceId: 'workspace-1',
+            workspace: {
+              id: 'workspace-1',
+            },
+          },
+        },
+      };
+
+      prisma.card.findUnique = jest.fn().mockResolvedValue(cardWithRelations);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1' },
+      });
+      prisma.workspaceMember.findUnique = jest.fn().mockResolvedValue(null);
+
+      await expect(service.assignUserToCard('card-1', 'user-2', 'user-1')).rejects.toThrow(
+        ForbiddenException
+      );
+    });
+  });
+
+  describe('unassignUserFromCard', () => {
+    it('unassigns a user from a card successfully', async () => {
+      const cardWithRelations = {
+        id: 'card-1',
+        listId: 'list-1',
+        list: {
+          id: 'list-1',
+          boardId: 'board-1',
+          board: {
+            id: 'board-1',
+            workspaceId: 'workspace-1',
+            workspace: {
+              id: 'workspace-1',
+            },
+          },
+        },
+      };
+
+      prisma.card.findUnique = jest.fn().mockResolvedValue(cardWithRelations);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1' },
+      });
+      prisma.cardAssignee.findUnique = jest.fn().mockResolvedValue({
+        cardId: 'card-1',
+        userId: 'user-2',
+      });
+      prisma.cardAssignee.delete = jest.fn();
+
+      const result = await service.unassignUserFromCard('card-1', 'user-2', 'user-1');
+
+      expect(prisma.cardAssignee.delete).toHaveBeenCalledWith({
+        where: {
+          cardId_userId: {
+            cardId: 'card-1',
+            userId: 'user-2',
+          },
+        },
+      });
+      expect(result).toBe(true);
+    });
+
+    it('throws NotFoundException when user is not assigned', async () => {
+      const cardWithRelations = {
+        id: 'card-1',
+        listId: 'list-1',
+        list: {
+          id: 'list-1',
+          boardId: 'board-1',
+          board: {
+            id: 'board-1',
+            workspaceId: 'workspace-1',
+            workspace: {
+              id: 'workspace-1',
+            },
+          },
+        },
+      };
+
+      prisma.card.findUnique = jest.fn().mockResolvedValue(cardWithRelations);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1' },
+      });
+      prisma.cardAssignee.findUnique = jest.fn().mockResolvedValue(null);
+
+      await expect(service.unassignUserFromCard('card-1', 'user-2', 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+      expect(prisma.cardAssignee.delete).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when cardId is empty', async () => {
+      await expect(service.unassignUserFromCard('', 'user-2', 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+    });
+
+    it('throws NotFoundException when userId is empty', async () => {
+      await expect(service.unassignUserFromCard('card-1', '', 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+    });
+
+    it('throws NotFoundException when card is not found', async () => {
+      prisma.card.findUnique = jest.fn().mockResolvedValue(null);
+
+      await expect(service.unassignUserFromCard('card-1', 'user-2', 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+    });
+  });
+
+  describe('setCardAssignees', () => {
+    it('sets assignees for a card successfully', async () => {
+      const cardWithRelations = {
+        id: 'card-1',
+        listId: 'list-1',
+        list: {
+          id: 'list-1',
+          boardId: 'board-1',
+          board: {
+            id: 'board-1',
+            workspaceId: 'workspace-1',
+            workspace: {
+              id: 'workspace-1',
+            },
+          },
+        },
+      };
+
+      prisma.card.findUnique = jest.fn().mockResolvedValue(cardWithRelations);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1' },
+      });
+      prisma.workspaceMember.findMany = jest.fn().mockResolvedValue([
+        { userId: 'user-2' },
+        { userId: 'user-3' },
+      ]);
+      prisma.$transaction = jest.fn().mockImplementation(async (callback) => {
+        return callback(prisma);
+      });
+      prisma.cardAssignee.deleteMany = jest.fn();
+      prisma.cardAssignee.createMany = jest.fn();
+
+      const result = await service.setCardAssignees('card-1', ['user-2', 'user-3'], 'user-1');
+
+      expect(prisma.$transaction).toHaveBeenCalled();
+      expect(prisma.cardAssignee.deleteMany).toHaveBeenCalledWith({
+        where: { cardId: 'card-1' },
+      });
+      expect(prisma.cardAssignee.createMany).toHaveBeenCalledWith({
+        data: [
+          { cardId: 'card-1', userId: 'user-2' },
+          { cardId: 'card-1', userId: 'user-3' },
+        ],
+        skipDuplicates: true,
+      });
+      expect(result).toBe(true);
+    });
+
+    it('clears all assignees when empty array is provided', async () => {
+      const cardWithRelations = {
+        id: 'card-1',
+        listId: 'list-1',
+        list: {
+          id: 'list-1',
+          boardId: 'board-1',
+          board: {
+            id: 'board-1',
+            workspaceId: 'workspace-1',
+            workspace: {
+              id: 'workspace-1',
+            },
+          },
+        },
+      };
+
+      prisma.card.findUnique = jest.fn().mockResolvedValue(cardWithRelations);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1' },
+      });
+      prisma.$transaction = jest.fn().mockImplementation(async (callback) => {
+        return callback(prisma);
+      });
+      prisma.cardAssignee.deleteMany = jest.fn();
+      prisma.cardAssignee.createMany = jest.fn();
+
+      const result = await service.setCardAssignees('card-1', [], 'user-1');
+
+      expect(prisma.cardAssignee.deleteMany).toHaveBeenCalled();
+      expect(prisma.cardAssignee.createMany).not.toHaveBeenCalled();
+      expect(result).toBe(true);
+    });
+
+    it('throws NotFoundException when cardId is empty', async () => {
+      await expect(service.setCardAssignees('', ['user-2'], 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+    });
+
+    it('throws NotFoundException when userIds is not an array', async () => {
+      await expect(service.setCardAssignees('card-1', null as any, 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+    });
+
+    it('throws NotFoundException when card is not found', async () => {
+      prisma.card.findUnique = jest.fn().mockResolvedValue(null);
+
+      await expect(service.setCardAssignees('card-1', ['user-2'], 'user-1')).rejects.toThrow(
+        NotFoundException
+      );
+    });
+
+    it('throws ForbiddenException when user is not a workspace member', async () => {
+      const cardWithRelations = {
+        id: 'card-1',
+        listId: 'list-1',
+        list: {
+          id: 'list-1',
+          boardId: 'board-1',
+          board: {
+            id: 'board-1',
+            workspaceId: 'workspace-1',
+            workspace: {
+              id: 'workspace-1',
+            },
+          },
+        },
+      };
+
+      prisma.card.findUnique = jest.fn().mockResolvedValue(cardWithRelations);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1' },
+      });
+      prisma.workspaceMember.findMany = jest.fn().mockResolvedValue([{ userId: 'user-2' }]);
+
+      await expect(service.setCardAssignees('card-1', ['user-2', 'user-3'], 'user-1')).rejects.toThrow(
+        ForbiddenException
+      );
     });
   });
 });
