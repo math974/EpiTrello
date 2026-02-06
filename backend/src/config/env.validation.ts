@@ -20,6 +20,30 @@ class EnvironmentVariables {
   @IsOptional()
   @IsString()
   PORT?: string;
+
+  @IsOptional()
+  @IsString()
+  MINIO_ENDPOINT?: string;
+
+  @IsOptional()
+  @IsString()
+  MINIO_PORT?: string;
+
+  @IsOptional()
+  @IsString()
+  MINIO_ACCESS_KEY?: string;
+
+  @IsOptional()
+  @IsString()
+  MINIO_SECRET_KEY?: string;
+
+  @IsOptional()
+  @IsString()
+  MINIO_BUCKET_NAME?: string;
+
+  @IsOptional()
+  @IsString()
+  MINIO_USE_SSL?: string;
 }
 
 const normalizeEmptyStrings = (config: Record<string, unknown>) => {

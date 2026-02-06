@@ -16,6 +16,7 @@ import { CommentsModule } from './comments/comments.module';
 import { LabelsModule } from './labels/labels.module';
 import { ActivitiesModule } from './activities/activities.module';
 import { ChecklistsModule } from './checklists/checklists.module';
+import { StorageModule } from './storage/storage.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { ChecklistsModule } from './checklists/checklists.module';
     CommentsModule,
     LabelsModule,
     ChecklistsModule,
+    StorageModule,
     HealthModule,
   ],
 })

@@ -30,6 +30,8 @@ When running the dev compose file, you get:
 - **pgAdmin**: `http://localhost:5050`
 - **Docs (SpectaQL)**: `http://localhost:4400`
 - **Prisma Studio**: `http://localhost:5555`
+- **MinIO API**: `http://localhost:9000`
+- **MinIO Console**: `http://localhost:9001`
 
 Prisma Studio is a web UI to browse and edit your database tables during development.
 
@@ -157,6 +159,15 @@ Common variables used by `docker-compose.dev.yml`:
 - `NEXT_PUBLIC_GRAPHQL_API`
 - `PGADMIN_DEFAULT_EMAIL`
 - `PGADMIN_DEFAULT_PASSWORD`
+- `MINIO_ROOT_USER` (default: `minioadmin`)
+- `MINIO_ROOT_PASSWORD` (default: `minioadmin`)
+- `MINIO_PORT` (default: `9000`)
+- `MINIO_CONSOLE_PORT` (default: `9001`)
+- `MINIO_ENDPOINT` (default: `localhost`)
+- `MINIO_USE_SSL` (default: `false`)
+- `MINIO_ACCESS_KEY` (default: `minioadmin`)
+- `MINIO_SECRET_KEY` (default: `minioadmin`)
+- `MINIO_BUCKET_NAME` (default: `app-uploads`)
 
 ## Troubleshooting
 
@@ -195,6 +206,42 @@ If you see permission errors with volumes:
 
 ```bash
 sudo chown -R $USER:$USER .
+```
+
+## MinIO Object Storage
+
+MinIO is configured as an S3-compatible object storage service for file uploads.
+
+### Access
+
+- **MinIO API**: http://localhost:9000
+- **MinIO Console**: http://localhost:9001
+- **Default credentials**: minioadmin / minioadmin
+
+### Configuration
+
+The `app-uploads` bucket is automatically created on startup with public download access.
+
+### Usage in Backend
+
+The `StorageService` provides methods for:
+- Generating presigned upload URLs
+- Generating presigned download URLs
+- Deleting objects
+
+Example:
+```typescript
+// Inject StorageService
+constructor(private readonly storageService: StorageService) {}
+
+// Generate upload URL
+const uploadUrl = await this.storageService.getUploadUrl('path/to/file.jpg', 3600);
+
+// Generate download URL
+const downloadUrl = await this.storageService.getDownloadUrl('path/to/file.jpg', 3600);
+
+// Delete object
+await this.storageService.deleteObject('path/to/file.jpg');
 ```
 
 ## Next Steps
