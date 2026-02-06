@@ -6,6 +6,23 @@ import { ActivityType } from '../activities/models/activity-type.enum';
 
 @Injectable()
 export class CardsService {
+  private readonly cardInclude = {
+    list: true,
+    assignees: {
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            avatar: true,
+            createdAt: true,
+          },
+        },
+      },
+    },
+  };
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly workspacesService: WorkspacesService,
@@ -58,9 +75,7 @@ export class CardsService {
         listId,
         position: newPosition,
       },
-      include: {
-        list: true,
-      },
+      include: this.cardInclude,
     });
 
     // Log activity (non-blocking)
@@ -138,9 +153,7 @@ export class CardsService {
     if (Object.keys(updateData).length === 0) {
       return this.prisma.card.findUnique({
         where: { id: cardId },
-        include: {
-          list: true,
-        },
+        include: this.cardInclude,
       });
     }
 
@@ -148,9 +161,7 @@ export class CardsService {
     const updatedCard = await this.prisma.card.update({
       where: { id: cardId },
       data: updateData,
-      include: {
-        list: true,
-      },
+      include: this.cardInclude,
     });
 
     // Log activity (non-blocking)
@@ -247,9 +258,7 @@ export class CardsService {
       // Return the updated card
       return this.prisma.card.findUnique({
         where: { id: cardId },
-        include: {
-          list: true,
-        },
+        include: this.cardInclude,
       });
     } else if (!archived && card.archived) {
       // Unarchiving: restore original position and reorganize other cards
@@ -286,17 +295,13 @@ export class CardsService {
       // Return the updated card
       return this.prisma.card.findUnique({
         where: { id: cardId },
-        include: {
-          list: true,
-        },
+        include: this.cardInclude,
       });
     } else {
       // No change in archived status, just return the card
       return this.prisma.card.findUnique({
         where: { id: cardId },
-        include: {
-          list: true,
-        },
+        include: this.cardInclude,
       });
     }
   }
@@ -694,9 +699,7 @@ export class CardsService {
       // Label is already attached, return the card without error
       return this.prisma.card.findUnique({
         where: { id: cardId },
-        include: {
-          list: true,
-        },
+        include: this.cardInclude,
       });
     }
 
@@ -797,9 +800,7 @@ export class CardsService {
       // Relation doesn't exist, return the card without error (idempotent)
       return this.prisma.card.findUnique({
         where: { id: cardId },
-        include: {
-          list: true,
-        },
+        include: this.cardInclude,
       });
     }
 
@@ -873,9 +874,7 @@ export class CardsService {
       data: {
         dueDate,
       },
-      include: {
-        list: true,
-      },
+      include: this.cardInclude,
     });
 
     // Log activity (non-blocking)
@@ -932,9 +931,7 @@ export class CardsService {
       data: {
         dueDate: null,
       },
-      include: {
-        list: true,
-      },
+      include: this.cardInclude,
     });
 
     // Log activity (non-blocking)
@@ -991,9 +988,7 @@ export class CardsService {
       data: {
         done,
       },
-      include: {
-        list: true,
-      },
+      include: this.cardInclude,
     });
 
     // Log activity (non-blocking)
@@ -1010,6 +1005,272 @@ export class CardsService {
       });
 
     return updatedCard;
+  }
+
+  async assignUserToCard(cardId: string, userId: string, actorId: string) {
+    // Validate cardId is provided
+    if (!cardId || cardId.trim() === '') {
+      throw new NotFoundException('Card ID is required');
+    }
+
+    // Validate userId is provided
+    if (!userId || userId.trim() === '') {
+      throw new NotFoundException('User ID is required');
+    }
+
+    // Find the card with its list, board and workspace
+    const card = await this.prisma.card.findUnique({
+      where: { id: cardId },
+      include: {
+        list: {
+          include: {
+            board: {
+              include: {
+                workspace: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!card) {
+      throw new NotFoundException('Card not found');
+    }
+
+    // Check if actor is a member of the workspace (throws ForbiddenException if not)
+    await this.workspacesService.requireWorkspaceAccess(
+      card.list.board.workspaceId,
+      actorId
+    );
+
+    // Check if the user to assign is a member of the workspace
+    const workspaceMember = await this.prisma.workspaceMember.findUnique({
+      where: {
+        userId_workspaceId: {
+          userId,
+          workspaceId: card.list.board.workspaceId,
+        },
+      },
+    });
+
+    if (!workspaceMember) {
+      throw new ForbiddenException('User is not a member of the workspace');
+    }
+
+    // Check if assignment already exists
+    const existingAssignment = await this.prisma.cardAssignee.findUnique({
+      where: {
+        cardId_userId: {
+          cardId,
+          userId,
+        },
+      },
+    });
+
+    if (existingAssignment) {
+      // Already assigned, return success (idempotent)
+      return true;
+    }
+
+    // Create the assignment
+    await this.prisma.cardAssignee.create({
+      data: {
+        cardId,
+        userId,
+      },
+    });
+
+    // Log activity
+    await this.activitiesService.logActivity({
+      workspaceId: card.list.board.workspaceId,
+      boardId: card.list.boardId,
+      actorId,
+      type: ActivityType.CARD_ASSIGNEE_ADDED,
+      metadata: {
+        cardId,
+        userId,
+      },
+    }).catch(() => {
+      // Ignore activity logging errors
+    });
+
+    return true;
+  }
+
+  async unassignUserFromCard(cardId: string, userId: string, actorId: string) {
+    // Validate cardId is provided
+    if (!cardId || cardId.trim() === '') {
+      throw new NotFoundException('Card ID is required');
+    }
+
+    // Validate userId is provided
+    if (!userId || userId.trim() === '') {
+      throw new NotFoundException('User ID is required');
+    }
+
+    // Find the card with its list, board and workspace
+    const card = await this.prisma.card.findUnique({
+      where: { id: cardId },
+      include: {
+        list: {
+          include: {
+            board: {
+              include: {
+                workspace: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!card) {
+      throw new NotFoundException('Card not found');
+    }
+
+    // Check if actor is a member of the workspace (throws ForbiddenException if not)
+    await this.workspacesService.requireWorkspaceAccess(
+      card.list.board.workspaceId,
+      actorId
+    );
+
+    // Check if assignment exists
+    const assignment = await this.prisma.cardAssignee.findUnique({
+      where: {
+        cardId_userId: {
+          cardId,
+          userId,
+        },
+      },
+    });
+
+    if (!assignment) {
+      throw new NotFoundException('User is not assigned to this card');
+    }
+
+    // Delete the assignment
+    await this.prisma.cardAssignee.delete({
+      where: {
+        cardId_userId: {
+          cardId,
+          userId,
+        },
+      },
+    });
+
+    // Log activity
+    await this.activitiesService.logActivity({
+      workspaceId: card.list.board.workspaceId,
+      boardId: card.list.boardId,
+      actorId,
+      type: ActivityType.CARD_ASSIGNEE_REMOVED,
+      metadata: {
+        cardId,
+        userId,
+      },
+    }).catch(() => {
+      // Ignore activity logging errors
+    });
+
+    return true;
+  }
+
+  async setCardAssignees(cardId: string, userIds: string[], actorId: string) {
+    // Validate cardId is provided
+    if (!cardId || cardId.trim() === '') {
+      throw new NotFoundException('Card ID is required');
+    }
+
+    // Validate userIds is provided (can be empty array)
+    if (!Array.isArray(userIds)) {
+      throw new NotFoundException('User IDs must be an array');
+    }
+
+    // Find the card with its list, board and workspace
+    const card = await this.prisma.card.findUnique({
+      where: { id: cardId },
+      include: {
+        list: {
+          include: {
+            board: {
+              include: {
+                workspace: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!card) {
+      throw new NotFoundException('Card not found');
+    }
+
+    // Check if actor is a member of the workspace (throws ForbiddenException if not)
+    await this.workspacesService.requireWorkspaceAccess(
+      card.list.board.workspaceId,
+      actorId
+    );
+
+    // Validate all users are workspace members
+    if (userIds.length > 0) {
+      const workspaceMembers = await this.prisma.workspaceMember.findMany({
+        where: {
+          workspaceId: card.list.board.workspaceId,
+          userId: {
+            in: userIds,
+          },
+        },
+        select: {
+          userId: true,
+        },
+      });
+
+      const memberIds = new Set(workspaceMembers.map((m) => m.userId));
+      for (const userId of userIds) {
+        if (!memberIds.has(userId)) {
+          throw new ForbiddenException(
+            `User ${userId} is not a member of the workspace`
+          );
+        }
+      }
+    }
+
+    // Use a transaction to replace all assignments
+    await this.prisma.$transaction(async (tx) => {
+      // Delete all existing assignments
+      await tx.cardAssignee.deleteMany({
+        where: { cardId },
+      });
+
+      // Create new assignments
+      if (userIds.length > 0) {
+        await tx.cardAssignee.createMany({
+          data: userIds.map((userId) => ({
+            cardId,
+            userId,
+          })),
+          skipDuplicates: true,
+        });
+      }
+    });
+
+    // Log activity
+    await this.activitiesService.logActivity({
+      workspaceId: card.list.board.workspaceId,
+      boardId: card.list.boardId,
+      actorId,
+      type: ActivityType.CARD_ASSIGNEES_SET,
+      metadata: {
+        cardId,
+        userIds,
+      },
+    }).catch(() => {
+      // Ignore activity logging errors
+    });
+
+    return true;
   }
 }
 
