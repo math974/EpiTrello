@@ -66,6 +66,7 @@ model Card {
   list            List      @relation(fields: [listId], references: [id], onDelete: Cascade)
   comments        Comment[]
   labels          CardLabel[]
+  checklists      Checklist[]
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -185,6 +186,32 @@ model Activity {
   @@index([boardId])
   @@index([actorId])
   @@index([createdAt])
+}
+
+model Checklist {
+  id        String   @id @default(uuid())
+  cardId    String
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  title     String
+  position  Int      @default(0)
+  items     ChecklistItem[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([cardId])
+}
+
+model ChecklistItem {
+  id          String    @id @default(uuid())
+  checklistId String
+  checklist   Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  content     String
+  checked     Boolean   @default(false)
+  position    Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([checklistId])
 }
 
 

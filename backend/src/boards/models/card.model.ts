@@ -1,5 +1,6 @@
 import { Field, ID, Int, ObjectType } from '@nestjs/graphql';
 import { ListModel } from './list.model';
+import { ChecklistModel } from '../../checklists/models/checklist.model';
 
 @ObjectType()
 export class CardModel {
@@ -38,5 +39,8 @@ export class CardModel {
 
   @Field()
   updatedAt!: Date;
+
+  @Field(() => [ChecklistModel], { nullable: true })
+  checklists?: ChecklistModel[] | null;
 }
 
