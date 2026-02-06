@@ -14,6 +14,9 @@ describe('CardsResolver', () => {
     setCardDueDate: jest.fn(),
     clearCardDueDate: jest.fn(),
     setCardDone: jest.fn(),
+    assignUserToCard: jest.fn(),
+    unassignUserFromCard: jest.fn(),
+    setCardAssignees: jest.fn(),
   } as unknown as CardsService;
   const resolver = new CardsResolver(cardsService);
 
@@ -285,6 +288,39 @@ describe('CardsResolver', () => {
 
     expect(cardsService.setCardDone).toHaveBeenCalledWith('card-1', true, 'user-1');
     expect(result).toBe(card);
+  });
+
+  it('assigns a user to a card for the current user', async () => {
+    const user = { id: 'user-1' } as User;
+    const input = { cardId: 'card-1', userId: 'user-2' };
+    cardsService.assignUserToCard = jest.fn().mockResolvedValue(true);
+
+    const result = await resolver.assignUserToCard(input, user);
+
+    expect(cardsService.assignUserToCard).toHaveBeenCalledWith('card-1', 'user-2', 'user-1');
+    expect(result).toBe(true);
+  });
+
+  it('unassigns a user from a card for the current user', async () => {
+    const user = { id: 'user-1' } as User;
+    const input = { cardId: 'card-1', userId: 'user-2' };
+    cardsService.unassignUserFromCard = jest.fn().mockResolvedValue(true);
+
+    const result = await resolver.unassignUserFromCard(input, user);
+
+    expect(cardsService.unassignUserFromCard).toHaveBeenCalledWith('card-1', 'user-2', 'user-1');
+    expect(result).toBe(true);
+  });
+
+  it('sets assignees for a card for the current user', async () => {
+    const user = { id: 'user-1' } as User;
+    const input = { cardId: 'card-1', userIds: ['user-2', 'user-3'] };
+    cardsService.setCardAssignees = jest.fn().mockResolvedValue(true);
+
+    const result = await resolver.setCardAssignees(input, user);
+
+    expect(cardsService.setCardAssignees).toHaveBeenCalledWith('card-1', ['user-2', 'user-3'], 'user-1');
+    expect(result).toBe(true);
   });
 });
 
