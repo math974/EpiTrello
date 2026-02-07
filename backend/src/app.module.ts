@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
+import { ScheduleModule } from '@nestjs/schedule';
 import { join } from 'path';
 import { AuthModule } from './auth/auth.module';
 import { HealthModule } from './health/health.module';
@@ -17,10 +18,12 @@ import { LabelsModule } from './labels/labels.module';
 import { ActivitiesModule } from './activities/activities.module';
 import { ChecklistsModule } from './checklists/checklists.module';
 import { StorageModule } from './storage/storage.module';
+import { AttachmentsModule } from './attachments/attachments.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
+    ScheduleModule.forRoot(),
     GraphQLModule.forRootAsync<ApolloDriverConfig>({
       driver: ApolloDriver,
       imports: [AuthModule],
@@ -44,6 +47,7 @@ import { StorageModule } from './storage/storage.module';
     LabelsModule,
     ChecklistsModule,
     StorageModule,
+    AttachmentsModule,
     HealthModule,
   ],
 })
