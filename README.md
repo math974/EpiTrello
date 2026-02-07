@@ -170,6 +170,12 @@ Common variables used by `docker-compose.dev.yml`:
 - `MINIO_ACCESS_KEY` (default: `minioadmin`)
 - `MINIO_SECRET_KEY` (default: `minioadmin`)
 - `MINIO_BUCKET_NAME` (default: `app-uploads`)
+- `GOOGLE_CLIENT_ID` - Google OAuth Client ID (optional, required for Google OAuth)
+- `GOOGLE_CLIENT_SECRET` - Google OAuth Client Secret (optional, required for Google OAuth)
+- `GITHUB_CLIENT_ID` - GitHub OAuth Client ID (optional, required for GitHub OAuth)
+- `GITHUB_CLIENT_SECRET` - GitHub OAuth Client Secret (optional, required for GitHub OAuth)
+- `OAUTH_REDIRECT_URI` - OAuth callback URL (default: `http://localhost:4000/auth/{provider}/callback`)
+- `FRONTEND_URL` - Frontend URL for OAuth redirects (default: `http://localhost:3000`)
 
 ## Troubleshooting
 
@@ -255,6 +261,69 @@ const downloadUrl = await this.storageService.getDownloadUrl('path/to/file.jpg',
 // Delete object
 await this.storageService.deleteObject('path/to/file.jpg');
 ```
+
+## OAuth Authentication
+
+The application supports OAuth authentication via Google and GitHub. OAuth uses REST endpoints while the rest of the API uses GraphQL.
+
+### Configuration
+
+1. **Google OAuth Setup**:
+   - Go to [Google Cloud Console](https://console.cloud.google.com/)
+   - Create a new project or select an existing one
+   - Enable Google+ API
+   - Go to "Credentials" → "Create Credentials" → "OAuth client ID"
+   - Choose "Web application"
+   - Add authorized redirect URI: `http://localhost:4000/auth/google/callback` (or your production URL)
+   - Copy the Client ID and Client Secret
+
+2. **GitHub OAuth Setup**:
+   - Go to [GitHub Developer Settings](https://github.com/settings/developers)
+   - Click "New OAuth App"
+   - Set Application name
+   - Set Homepage URL: `http://localhost:3000` (or your frontend URL)
+   - Set Authorization callback URL: `http://localhost:4000/auth/github/callback` (or your backend URL)
+   - Copy the Client ID and Client Secret
+
+3. **Environment Variables**:
+   Add these to your `.env.dev` or `.env.prod`:
+   ```bash
+   GOOGLE_CLIENT_ID=your_google_client_id
+   GOOGLE_CLIENT_SECRET=your_google_client_secret
+   GITHUB_CLIENT_ID=your_github_client_id
+   GITHUB_CLIENT_SECRET=your_github_client_secret
+   OAUTH_REDIRECT_URI=http://localhost:4000/auth/{provider}/callback
+   FRONTEND_URL=http://localhost:3000
+   ```
+
+### OAuth Flow
+
+1. User clicks "Login with Google" or "Login with GitHub"
+2. Frontend redirects to `GET /auth/google` or `GET /auth/github`
+3. User authenticates with the provider
+4. Provider redirects to callback endpoint
+5. Backend creates/logs in user and generates JWT tokens
+6. User is redirected to frontend with tokens in URL: `/auth/callback?accessToken=...&refreshToken=...`
+7. Frontend stores tokens and user is logged in
+
+### Database
+
+OAuth accounts are stored in the `OAuthAccount` table with:
+- `provider`: 'google' or 'github'
+- `providerUserId`: Unique ID from the OAuth provider
+- `userId`: Foreign key to User table
+- Unique constraint on `(provider, providerUserId)`
+
+Users created via OAuth have `passwordHash` set to `null`.
+
+### REST Endpoints
+
+- `GET /auth/google` - Redirects to Google OAuth
+- `GET /auth/google/callback` - Google OAuth callback
+- `GET /auth/github` - Redirects to GitHub OAuth
+- `GET /auth/github/callback` - GitHub OAuth callback
+
+See [POSTMAN_OAUTH.md](POSTMAN_OAUTH.md) for detailed Postman testing instructions.
 
 ## Next Steps
 
