@@ -22,6 +22,7 @@ model User {
   comments  Comment[]
   activities Activity[]
   cardAssignments CardAssignee[]
+  attachments    Attachment[]
 }
 
 model Board {
@@ -69,6 +70,7 @@ model Card {
   labels          CardLabel[]
   checklists      Checklist[]
   assignees       CardAssignee[]
+  attachments     Attachment[]
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -229,6 +231,34 @@ model CardAssignee {
   @@id([cardId, userId])
   @@index([cardId])
   @@index([userId])
+}
+
+model Attachment {
+  id         String   @id @default(uuid())
+  cardId     String
+  card       Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  uploaderId String
+  uploader   User     @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+  objectKey  String
+  fileName   String
+  mimeType   String
+  size       Int
+  createdAt  DateTime @default(now())
+
+  @@index([cardId])
+  @@index([uploaderId])
+  @@index([objectKey])
+}
+
+model FailedDeletion {
+  id         String   @id @default(uuid())
+  objectKey  String   @unique // Unique key in MinIO/S3
+  retryCount Int      @default(0)
+  lastError  String?  // Last error message
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([objectKey])
 }
 
 

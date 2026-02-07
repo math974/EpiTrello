@@ -2,6 +2,7 @@ import { Field, ID, Int, ObjectType } from '@nestjs/graphql';
 import { ListModel } from './list.model';
 import { ChecklistModel } from '../../checklists/models/checklist.model';
 import { UserModel } from '../../users/models/user.model';
+import { AttachmentModel } from '../../attachments/models/attachment.model';
 
 @ObjectType()
 export class CardModel {
@@ -46,5 +47,8 @@ export class CardModel {
 
   @Field(() => [UserModel], { nullable: true })
   assignees?: UserModel[] | null;
+
+  @Field(() => [AttachmentModel], { nullable: true })
+  attachments?: AttachmentModel[] | null;
 }
 
