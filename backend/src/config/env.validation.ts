@@ -31,6 +31,14 @@ class EnvironmentVariables {
 
   @IsOptional()
   @IsString()
+  MINIO_EXTERNAL_ENDPOINT?: string;
+
+  @IsOptional()
+  @IsString()
+  MINIO_EXTERNAL_PORT?: string;
+
+  @IsOptional()
+  @IsString()
   MINIO_ACCESS_KEY?: string;
 
   @IsOptional()
