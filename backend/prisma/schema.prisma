@@ -11,7 +11,7 @@ model User {
   id        String   @id @default(uuid())
   username  String   @unique
   email     String   @unique
-  passwordHash String
+  passwordHash String?
   refreshTokenHash String?
   tokenVersion Int @default(0)
   avatar    String?
@@ -23,6 +23,7 @@ model User {
   activities Activity[]
   cardAssignments CardAssignee[]
   attachments    Attachment[]
+  oauthAccounts  OAuthAccount[]
 }
 
 model Board {
@@ -259,6 +260,19 @@ model FailedDeletion {
   updatedAt  DateTime @updatedAt
 
   @@index([objectKey])
+}
+
+model OAuthAccount {
+  id            String   @id @default(uuid())
+  provider      String   // 'google' or 'github'
+  providerUserId String
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+  @@index([provider, providerUserId])
 }
 
 
