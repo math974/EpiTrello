@@ -52,6 +52,26 @@ class EnvironmentVariables {
   @IsOptional()
   @IsString()
   MINIO_USE_SSL?: string;
+
+  @IsOptional()
+  @IsString()
+  GOOGLE_CLIENT_ID?: string;
+
+  @IsOptional()
+  @IsString()
+  GOOGLE_CLIENT_SECRET?: string;
+
+  @IsOptional()
+  @IsString()
+  GITHUB_CLIENT_ID?: string;
+
+  @IsOptional()
+  @IsString()
+  GITHUB_CLIENT_SECRET?: string;
+
+  @IsOptional()
+  @IsString()
+  OAUTH_REDIRECT_URI?: string;
 }
 
 const normalizeEmptyStrings = (config: Record<string, unknown>) => {
