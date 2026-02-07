@@ -156,6 +156,19 @@ describe('WorkspacesService', () => {
     });
   });
 
+  it('returns null when workspace is not found after access check', async () => {
+    prisma.workspace.findUnique = jest
+      .fn()
+      .mockResolvedValueOnce({ id: 'workspace-1', name: 'Acme', ownerId: 'user-1' }) // For requireWorkspaceAccess
+      .mockResolvedValueOnce(null); // For getWorkspace
+    prisma.workspaceMember.findUnique = jest.fn().mockResolvedValue({ userId: 'user-1' });
+    prisma.workspaceMember.findMany = jest.fn().mockResolvedValue([]);
+
+    const result = await service.getWorkspace('user-1', 'workspace-1');
+
+    expect(result).toBeNull();
+  });
+
   describe('requireWorkspaceAccess', () => {
     it('returns workspace and membership when user is a member', async () => {
       const workspace = { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' };

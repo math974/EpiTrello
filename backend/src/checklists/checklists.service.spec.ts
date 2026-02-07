@@ -649,6 +649,61 @@ describe('ChecklistsService', () => {
       expect(result.position).toBe(0);
     });
 
+    it('creates a checklist item with position incremented when checklist has items', async () => {
+      const checklistWithRelations = {
+        id: 'checklist-1',
+        cardId: 'card-1',
+        card: {
+          id: 'card-1',
+          listId: 'list-1',
+          list: {
+            id: 'list-1',
+            boardId: 'board-1',
+            board: {
+              id: 'board-1',
+              workspaceId: 'workspace-1',
+              workspace: {
+                id: 'workspace-1',
+              },
+            },
+          },
+        },
+      };
+
+      const lastItem = {
+        id: 'item-1',
+        checklistId: 'checklist-1',
+        content: 'First Item',
+        checked: false,
+        position: 2,
+      };
+
+      prisma.checklist.findUnique = jest.fn().mockResolvedValue(checklistWithRelations);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1' },
+      });
+      prisma.checklistItem.findFirst = jest.fn().mockResolvedValue(lastItem);
+      prisma.checklistItem.create = jest.fn().mockResolvedValue({
+        id: 'item-2',
+        checklistId: 'checklist-1',
+        content: 'My Item',
+        checked: false,
+        position: 3,
+      });
+
+      const result = await service.createChecklistItem('checklist-1', 'My Item', 'user-1');
+
+      expect(prisma.checklistItem.create).toHaveBeenCalledWith({
+        data: {
+          content: 'My Item',
+          checklistId: 'checklist-1',
+          position: 3,
+        },
+      });
+      expect(result.position).toBe(3);
+    });
+
     it('throws NotFoundException when checklistId is empty', async () => {
       await expect(service.createChecklistItem('', 'My Item', 'user-1')).rejects.toThrow(
         NotFoundException
@@ -768,6 +823,58 @@ describe('ChecklistsService', () => {
         },
       });
       expect(result).toBeDefined();
+      expect(result?.checked).toBe(true);
+    });
+
+    it('updates checklist item with both content and checked', async () => {
+      const itemWithRelations = {
+        id: 'item-1',
+        checklistId: 'checklist-1',
+        content: 'Old Content',
+        checked: false,
+        checklist: {
+          id: 'checklist-1',
+          cardId: 'card-1',
+          card: {
+            id: 'card-1',
+            listId: 'list-1',
+            list: {
+              id: 'list-1',
+              boardId: 'board-1',
+              board: {
+                id: 'board-1',
+                workspaceId: 'workspace-1',
+                workspace: {
+                  id: 'workspace-1',
+                },
+              },
+            },
+          },
+        },
+      };
+
+      prisma.checklistItem.findUnique = jest.fn().mockResolvedValue(itemWithRelations);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1' },
+      });
+      prisma.checklistItem.update = jest.fn().mockResolvedValue({
+        id: 'item-1',
+        content: 'New Content',
+        checked: true,
+      });
+
+      const result = await service.updateChecklistItem('item-1', 'user-1', 'New Content', true);
+
+      expect(prisma.checklistItem.update).toHaveBeenCalledWith({
+        where: { id: 'item-1' },
+        data: {
+          content: 'New Content',
+          checked: true,
+        },
+      });
+      expect(result).toBeDefined();
+      expect(result?.content).toBe('New Content');
       expect(result?.checked).toBe(true);
     });
 
@@ -1025,6 +1132,50 @@ describe('ChecklistsService', () => {
 
       await expect(
         service.reorderChecklistItems('checklist-1', ['item-2'], 'user-1')
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws NotFoundException when checklist is not found', async () => {
+      prisma.checklist.findUnique = jest.fn().mockResolvedValue(null);
+
+      await expect(
+        service.reorderChecklistItems('checklist-1', ['item-1'], 'user-1')
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws NotFoundException when not all items are included', async () => {
+      const checklistWithRelations = {
+        id: 'checklist-1',
+        cardId: 'card-1',
+        card: {
+          id: 'card-1',
+          listId: 'list-1',
+          list: {
+            id: 'list-1',
+            boardId: 'board-1',
+            board: {
+              id: 'board-1',
+              workspaceId: 'workspace-1',
+              workspace: {
+                id: 'workspace-1',
+              },
+            },
+          },
+        },
+      };
+
+      prisma.checklist.findUnique = jest.fn().mockResolvedValue(checklistWithRelations);
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1' },
+      });
+      prisma.checklistItem.findMany = jest.fn().mockResolvedValue([
+        { id: 'item-1' },
+        { id: 'item-2' },
+      ]);
+
+      await expect(
+        service.reorderChecklistItems('checklist-1', ['item-1'], 'user-1')
       ).rejects.toThrow(NotFoundException);
     });
   });

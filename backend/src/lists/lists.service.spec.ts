@@ -492,6 +492,58 @@ describe('ListsService', () => {
       expect(result?.position).toBe(1); // Restored to original position
     });
 
+    it('unarchives a list and restores it to position 0 when archivedPosition is null', async () => {
+      const listWithBoard = {
+        id: 'list-1',
+        title: 'My List',
+        position: 0,
+        archived: true,
+        archivedPosition: null, // No original position stored, default to 0
+        boardId: 'board-1',
+        board: {
+          id: 'board-1',
+          title: 'My Board',
+          workspaceId: 'workspace-1',
+          workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        },
+      };
+      const unarchivedList = {
+        id: 'list-1',
+        title: 'My List',
+        position: 0,
+        archived: false,
+        archivedPosition: null,
+        boardId: 'board-1',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        board: listWithBoard.board,
+      };
+      prisma.list.findUnique = jest
+        .fn()
+        .mockResolvedValueOnce(listWithBoard)
+        .mockResolvedValueOnce(unarchivedList);
+      prisma.$transaction = jest.fn().mockImplementation(async (callback) => {
+        const tx = {
+          list: {
+            updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+            update: jest.fn().mockResolvedValue(unarchivedList),
+          },
+        };
+        return callback(tx);
+      });
+      workspacesService.requireWorkspaceAccess = jest.fn().mockResolvedValue({
+        workspace: { id: 'workspace-1', name: 'Acme', ownerId: 'user-1' },
+        membership: { userId: 'user-1', workspaceId: 'workspace-1', role: 'MEMBER' },
+      });
+
+      const result = await service.archiveList('list-1', false, 'user-1');
+
+      expect(prisma.$transaction).toHaveBeenCalled();
+      expect(result).toBe(unarchivedList);
+      expect(result?.archived).toBe(false);
+      expect(result?.position).toBe(0); // Restored to position 0 when archivedPosition is null
+    });
+
     it('throws NotFoundException when listId is empty', async () => {
       await expect(service.archiveList('', true, 'user-1')).rejects.toThrow(NotFoundException);
       expect(prisma.list.findUnique).not.toHaveBeenCalled();
