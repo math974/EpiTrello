@@ -1,31 +1,146 @@
 import { AuthResolver } from './auth.resolver';
 import { AuthService } from './auth.service';
 import { UserModel } from '../users/models/user.model';
+import { AuthPayload } from './models/auth-payload.model';
 
-describe('AuthResolver.me', () => {
+describe('AuthResolver', () => {
   const authService = {
     register: jest.fn(),
     login: jest.fn(),
     refresh: jest.fn(),
-  };
+    logout: jest.fn(),
+  } as unknown as AuthService;
 
-  const createResolver = () => new AuthResolver(authService as unknown as AuthService);
+  const createResolver = () => new AuthResolver(authService);
 
-  it('returns the current user when provided in context', () => {
-    const resolver = createResolver();
-    const user = {
-      id: 'user-1',
-      email: 'test@example.com',
-      username: 'testuser',
-    } as UserModel;
-
-    expect(resolver.me(user)).toBe(user);
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  it('returns null when no user is in context', () => {
-    const resolver = createResolver();
+  describe('register', () => {
+    it('registers a new user', async () => {
+      const resolver = createResolver();
+      const input = {
+        email: 'test@example.com',
+        username: 'testuser',
+        password: 'password123',
+      };
+      const payload: AuthPayload = {
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+        user: {
+          id: 'user-1',
+          email: 'test@example.com',
+          username: 'testuser',
+        } as UserModel,
+      };
 
-    expect(resolver.me(null)).toBeNull();
+      (authService.register as jest.Mock).mockResolvedValue(payload);
+
+      const result = await resolver.register(input);
+
+      expect(authService.register).toHaveBeenCalledWith(input);
+      expect(result).toBe(payload);
+    });
+  });
+
+  describe('login', () => {
+    it('logs in a user', async () => {
+      const resolver = createResolver();
+      const input = {
+        email: 'test@example.com',
+        password: 'password123',
+      };
+      const payload: AuthPayload = {
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+        user: {
+          id: 'user-1',
+          email: 'test@example.com',
+          username: 'testuser',
+        } as UserModel,
+      };
+
+      (authService.login as jest.Mock).mockResolvedValue(payload);
+
+      const result = await resolver.login(input);
+
+      expect(authService.login).toHaveBeenCalledWith(input);
+      expect(result).toBe(payload);
+    });
+  });
+
+  describe('refreshToken', () => {
+    it('refreshes a token', async () => {
+      const resolver = createResolver();
+      const input = {
+        refreshToken: 'refresh-token',
+      };
+      const payload: AuthPayload = {
+        accessToken: 'new-access-token',
+        refreshToken: 'new-refresh-token',
+        user: {
+          id: 'user-1',
+          email: 'test@example.com',
+          username: 'testuser',
+        } as UserModel,
+      };
+
+      (authService.refresh as jest.Mock).mockResolvedValue(payload);
+
+      const result = await resolver.refreshToken(input);
+
+      expect(authService.refresh).toHaveBeenCalledWith(input);
+      expect(result).toBe(payload);
+    });
+  });
+
+  describe('logout', () => {
+    it('logs out a user', async () => {
+      const resolver = createResolver();
+      const input = {
+        refreshToken: 'refresh-token',
+      };
+
+      (authService.logout as jest.Mock).mockResolvedValue(true);
+
+      const result = await resolver.logout(input);
+
+      expect(authService.logout).toHaveBeenCalledWith(input);
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('me', () => {
+    it('returns the current user when provided in context', () => {
+      const resolver = createResolver();
+      const user = {
+        id: 'user-1',
+        email: 'test@example.com',
+        username: 'testuser',
+      } as UserModel;
+
+      expect(resolver.me(user)).toBe(user);
+    });
+
+    it('returns null when no user is in context', () => {
+      const resolver = createResolver();
+
+      expect(resolver.me(null)).toBeNull();
+    });
+  });
+
+  describe('meStrict', () => {
+    it('returns the current user when provided in context', () => {
+      const resolver = createResolver();
+      const user = {
+        id: 'user-1',
+        email: 'test@example.com',
+        username: 'testuser',
+      } as UserModel;
+
+      expect(resolver.meStrict(user)).toBe(user);
+    });
   });
 });
 
