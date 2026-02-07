@@ -163,7 +163,9 @@ Common variables used by `docker-compose.dev.yml`:
 - `MINIO_ROOT_PASSWORD` (default: `minioadmin`)
 - `MINIO_PORT` (default: `9000`)
 - `MINIO_CONSOLE_PORT` (default: `9001`)
-- `MINIO_ENDPOINT` (default: `localhost`)
+- `MINIO_ENDPOINT` (default: `localhost` for local dev, `minio` for Docker) - Internal endpoint for backend operations
+- `MINIO_EXTERNAL_ENDPOINT` (default: `localhost`) - External endpoint for presigned URLs (used by frontend)
+- `MINIO_EXTERNAL_PORT` (default: `9000`) - External port for presigned URLs
 - `MINIO_USE_SSL` (default: `false`)
 - `MINIO_ACCESS_KEY` (default: `minioadmin`)
 - `MINIO_SECRET_KEY` (default: `minioadmin`)
@@ -221,6 +223,16 @@ MinIO is configured as an S3-compatible object storage service for file uploads.
 ### Configuration
 
 The `app-uploads` bucket is automatically created on startup with public download access.
+
+**Important**: The backend uses two different endpoints:
+- **Internal endpoint** (`MINIO_ENDPOINT`): Used for backend operations (delete, copy, move, list, metadata). In Docker, this is `minio` (the Docker service name). For local dev without Docker, use `localhost`.
+- **External endpoint** (`MINIO_EXTERNAL_ENDPOINT`): Used for generating presigned URLs that the frontend will use. This should always be `localhost` (or your public domain) so the frontend can access MinIO from outside Docker.
+
+This separation ensures that:
+- Backend can communicate with MinIO using the Docker service name internally
+- Frontend receives presigned URLs pointing to `localhost:9000` which it can access from the browser
+
+Both endpoints are automatically configured in `docker-compose.dev.yml`.
 
 ### Usage in Backend
 
