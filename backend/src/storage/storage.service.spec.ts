@@ -201,6 +201,166 @@ describe('StorageService', () => {
     });
   });
 
+  describe('copyObject', () => {
+    it('copies an object successfully', async () => {
+      const mockSend = jest.fn().mockResolvedValue({});
+      (S3Client as jest.MockedClass<typeof S3Client>).mockImplementation(() => ({
+        send: mockSend,
+      } as any));
+
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          StorageService,
+          {
+            provide: ConfigService,
+            useValue: mockConfigService,
+          },
+        ],
+      }).compile();
+
+      const copyService = module.get<StorageService>(StorageService);
+      await copyService.copyObject('tmp/user-1/file.jpg', 'attachments/card-1/file.jpg');
+
+      expect(mockSend).toHaveBeenCalled();
+    });
+  });
+
+  describe('moveObject', () => {
+    it('moves an object successfully (copy + delete)', async () => {
+      const mockSend = jest.fn().mockResolvedValue({});
+      (S3Client as jest.MockedClass<typeof S3Client>).mockImplementation(() => ({
+        send: mockSend,
+      } as any));
+
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          StorageService,
+          {
+            provide: ConfigService,
+            useValue: mockConfigService,
+          },
+        ],
+      }).compile();
+
+      const moveService = module.get<StorageService>(StorageService);
+      await moveService.moveObject('tmp/user-1/file.jpg', 'attachments/card-1/file.jpg');
+
+      // Should be called twice: once for copy, once for delete
+      expect(mockSend).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('listObjects', () => {
+    it('lists objects with prefix', async () => {
+      const mockObjects = [
+        { Key: 'tmp/user-1/file1.jpg' },
+        { Key: 'tmp/user-1/file2.jpg' },
+        { Key: 'tmp/user-2/file3.jpg' },
+      ];
+
+      const mockSend = jest.fn().mockResolvedValue({
+        Contents: mockObjects,
+      });
+      (S3Client as jest.MockedClass<typeof S3Client>).mockImplementation(() => ({
+        send: mockSend,
+      } as any));
+
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          StorageService,
+          {
+            provide: ConfigService,
+            useValue: mockConfigService,
+          },
+        ],
+      }).compile();
+
+      const listService = module.get<StorageService>(StorageService);
+      const objects = await listService.listObjects('tmp/');
+
+      expect(mockSend).toHaveBeenCalled();
+      expect(objects).toEqual([
+        'tmp/user-1/file1.jpg',
+        'tmp/user-1/file2.jpg',
+        'tmp/user-2/file3.jpg',
+      ]);
+    });
+
+    it('returns empty array when no objects found', async () => {
+      const mockSend = jest.fn().mockResolvedValue({
+        Contents: [],
+      });
+      (S3Client as jest.MockedClass<typeof S3Client>).mockImplementation(() => ({
+        send: mockSend,
+      } as any));
+
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          StorageService,
+          {
+            provide: ConfigService,
+            useValue: mockConfigService,
+          },
+        ],
+      }).compile();
+
+      const listService = module.get<StorageService>(StorageService);
+      const objects = await listService.listObjects('tmp/');
+
+      expect(objects).toEqual([]);
+    });
+  });
+
+  describe('getObjectMetadata', () => {
+    it('returns metadata for existing object', async () => {
+      const lastModified = new Date();
+      const mockSend = jest.fn().mockResolvedValue({
+        LastModified: lastModified,
+      });
+      (S3Client as jest.MockedClass<typeof S3Client>).mockImplementation(() => ({
+        send: mockSend,
+      } as any));
+
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          StorageService,
+          {
+            provide: ConfigService,
+            useValue: mockConfigService,
+          },
+        ],
+      }).compile();
+
+      const metadataService = module.get<StorageService>(StorageService);
+      const metadata = await metadataService.getObjectMetadata('tmp/user-1/file.jpg');
+
+      expect(mockSend).toHaveBeenCalled();
+      expect(metadata).toEqual({ lastModified });
+    });
+
+    it('returns null when object not found', async () => {
+      const mockSend = jest.fn().mockRejectedValue(new Error('Not found'));
+      (S3Client as jest.MockedClass<typeof S3Client>).mockImplementation(() => ({
+        send: mockSend,
+      } as any));
+
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          StorageService,
+          {
+            provide: ConfigService,
+            useValue: mockConfigService,
+          },
+        ],
+      }).compile();
+
+      const metadataService = module.get<StorageService>(StorageService);
+      const metadata = await metadataService.getObjectMetadata('tmp/user-1/file.jpg');
+
+      expect(metadata).toBeNull();
+    });
+  });
+
   describe('getBucketName', () => {
     it('returns the configured bucket name', () => {
       expect(service.getBucketName()).toBe('app-uploads');
