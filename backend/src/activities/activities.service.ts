@@ -20,13 +20,7 @@ export class ActivitiesService {
   }) {
     const { workspaceId, boardId, actorId, type, metadata } = params;
 
-    const data: {
-      workspaceId: string;
-      boardId: string | null;
-      actorId: string;
-      type: ActivityType;
-      metadata?: Record<string, any>;
-    } = {
+    const data: any = {
       workspaceId,
       boardId: boardId || null,
       actorId,
