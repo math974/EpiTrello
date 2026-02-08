@@ -44,12 +44,12 @@ describe('env.validation', () => {
   it('should normalize empty strings to undefined', () => {
     const config = {
       ...baseConfig,
-      CORS_ORIGIN: '',
+      CORS_ORIGIN: 'http://localhost:3000', // Required, so we provide a valid value
       PORT: '',
     };
 
     const result = validateEnv(config);
-    expect(result.CORS_ORIGIN).toBeUndefined();
+    expect(result.CORS_ORIGIN).toBe('http://localhost:3000');
     // When PORT is empty string, it's normalized to undefined, then defaulted to 4000
     // But class-transformer keeps it as string type
     expect(result.PORT).toBe('4000');
@@ -58,6 +58,7 @@ describe('env.validation', () => {
   it('should set default PORT to 4000 when undefined', () => {
     const config = {
       ...baseConfig,
+      CORS_ORIGIN: 'http://localhost:3000',
     };
 
     const result = validateEnv(config);
@@ -68,6 +69,7 @@ describe('env.validation', () => {
   it('should validate MinIO configuration', () => {
     const config = {
       ...baseConfig,
+      CORS_ORIGIN: 'http://localhost:3000',
       MINIO_ENDPOINT: 'minio',
       MINIO_PORT: '9000',
       MINIO_EXTERNAL_ENDPOINT: 'localhost',
@@ -88,6 +90,7 @@ describe('env.validation', () => {
   it('should validate OAuth configuration', () => {
     const config = {
       ...baseConfig,
+      CORS_ORIGIN: 'http://localhost:3000',
       GOOGLE_CLIENT_ID: 'google-client-id',
       GOOGLE_CLIENT_SECRET: 'google-client-secret',
       GITHUB_CLIENT_ID: 'github-client-id',
@@ -105,11 +108,12 @@ describe('env.validation', () => {
   it('should handle optional fields as undefined', () => {
     const config = {
       ...baseConfig,
+      CORS_ORIGIN: 'http://localhost:3000', // Required field
     };
 
     const result = validateEnv(config);
     expect(result.JWT_REFRESH_SECRET).toBeUndefined();
-    expect(result.CORS_ORIGIN).toBeUndefined();
+    expect(result.CORS_ORIGIN).toBe('http://localhost:3000'); // Required, so it has a value
     expect(result.MINIO_ENDPOINT).toBeUndefined();
     expect(result.GOOGLE_CLIENT_ID).toBeUndefined();
   });
@@ -117,6 +121,7 @@ describe('env.validation', () => {
   it('should keep PORT as string when provided as string', () => {
     const config = {
       ...baseConfig,
+      CORS_ORIGIN: 'http://localhost:3000',
       PORT: '5000',
     };
 
@@ -128,12 +133,12 @@ describe('env.validation', () => {
   it('should trim and normalize whitespace-only strings', () => {
     const config = {
       ...baseConfig,
-      CORS_ORIGIN: '   ',
+      CORS_ORIGIN: 'http://localhost:3000', // Required, so we provide a valid value instead of whitespace
       PORT: '   ',
     };
 
     const result = validateEnv(config);
-    expect(result.CORS_ORIGIN).toBeUndefined();
+    expect(result.CORS_ORIGIN).toBe('http://localhost:3000');
     // When PORT is empty/whitespace, it's normalized to undefined, then defaulted to 4000
     // But class-transformer keeps it as string type
     expect(result.PORT).toBe('4000');

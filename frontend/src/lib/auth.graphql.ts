@@ -45,3 +45,19 @@ export const ME_QUERY = gql`
   }
 `;
 
+export const REFRESH_TOKEN_MUTATION = gql`
+  mutation RefreshToken($input: RefreshTokenInput) {
+    refreshToken(input: $input) {
+      accessToken
+      refreshToken
+      user {
+        id
+        username
+        email
+        avatar
+        createdAt
+      }
+    }
+  }
+`;
+

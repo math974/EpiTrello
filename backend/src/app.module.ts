@@ -32,8 +32,8 @@ import { AttachmentsModule } from './attachments/attachments.module';
         autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
         sortSchema: true,
         playground: true,
-        context: async ({ req }: { req: { headers?: Record<string, string | undefined> } }) =>
-          authContext.buildContext(req),
+        context: async ({ req, res }: { req: any; res: any }) =>
+          ({ ...(await authContext.buildContext(req)), req, res }),
       }),
     }),
     PrismaModule,

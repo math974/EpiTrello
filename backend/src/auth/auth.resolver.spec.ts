@@ -37,9 +37,11 @@ describe('AuthResolver', () => {
 
       (authService.register as jest.Mock).mockResolvedValue(payload);
 
-      const result = await resolver.register(input);
+      const req = {} as any;
+      const res = {} as any;
+      const result = await resolver.register(input, req, res);
 
-      expect(authService.register).toHaveBeenCalledWith(input);
+      expect(authService.register).toHaveBeenCalledWith(input, req, res);
       expect(result).toBe(payload);
     });
   });
@@ -63,9 +65,11 @@ describe('AuthResolver', () => {
 
       (authService.login as jest.Mock).mockResolvedValue(payload);
 
-      const result = await resolver.login(input);
+      const req = {} as any;
+      const res = {} as any;
+      const result = await resolver.login(input, req, res);
 
-      expect(authService.login).toHaveBeenCalledWith(input);
+      expect(authService.login).toHaveBeenCalledWith(input, req, res);
       expect(result).toBe(payload);
     });
   });
@@ -88,9 +92,11 @@ describe('AuthResolver', () => {
 
       (authService.refresh as jest.Mock).mockResolvedValue(payload);
 
-      const result = await resolver.refreshToken(input);
+      const req = {} as any;
+      const res = {} as any;
+      const result = await resolver.refreshToken(input, req, res);
 
-      expect(authService.refresh).toHaveBeenCalledWith(input);
+      expect(authService.refresh).toHaveBeenCalledWith(input, req, res);
       expect(result).toBe(payload);
     });
   });
@@ -104,9 +110,11 @@ describe('AuthResolver', () => {
 
       (authService.logout as jest.Mock).mockResolvedValue(true);
 
-      const result = await resolver.logout(input);
+      const req = {} as any;
+      const res = {} as any;
+      const result = await resolver.logout(input, req, res);
 
-      expect(authService.logout).toHaveBeenCalledWith(input);
+      expect(authService.logout).toHaveBeenCalledWith(input, req, res);
       expect(result).toBe(true);
     });
   });
