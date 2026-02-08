@@ -20,8 +20,9 @@ COPY . .
 # Expose port
 EXPOSE 3000
 
-# Development command with hot reload
-CMD ["pnpm", "run", "dev"]
+# Development command: start codegen in watch mode and dev server
+# Note: codegen:watch runs in background to regenerate types when schema changes
+CMD sh -c "pnpm run codegen:watch & pnpm run dev"
 
 # Production build stage
 FROM base AS builder
@@ -34,6 +35,11 @@ RUN pnpm install --frozen-lockfile --fetch-timeout 300000
 
 # Copy the rest of the code
 COPY . .
+
+# Generate GraphQL types before building
+# Note: This will use the GraphQL endpoint if available, otherwise the schema.gql fallback
+# The codegen.yml is configured to fallback to ../backend/src/schema.gql
+RUN pnpm run codegen
 
 # Build Next.js application
 RUN pnpm run build
