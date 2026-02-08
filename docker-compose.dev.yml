@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -102,20 +100,26 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
+      target: dev
     container_name: epitrello-frontend-dev
     restart: unless-stopped
     ports:
       - "${FRONTEND_PORT}:3000"
     environment:
       NODE_ENV: ${NODE_ENV}
-      NEXT_PUBLIC_GRAPHQL_API: ${NEXT_PUBLIC_GRAPHQL_API}
+      # Client-side: use localhost (browser runs on host)
+      NEXT_PUBLIC_GRAPHQL_API: ${NEXT_PUBLIC_GRAPHQL_API:-http://localhost:4000/graphql}
+      # Server-side/codegen: use backend service name (Docker network)
+      GRAPHQL_API: http://backend:4000/graphql
       CHOKIDAR_USEPOLLING: "true"
       WATCHPACK_POLLING: "true"
     volumes:
       - ./frontend:/app
       - /app/node_modules
       - /app/.next
+      # Mount generated folder so files are visible in IDE
+      - ./frontend/src/generated:/app/src/generated
     depends_on:
       backend:
         condition: service_healthy
@@ -229,6 +233,7 @@ volumes:
   pgadmin_data:
   minio_data:
 
+                                                      
 networks:
   epitrello-network:
     driver: bridge

@@ -28,6 +28,9 @@ build/
 out/
 backend/src/schema.gql
 
+# Generated files
+frontend/src/generated/
+
 # Environment variables
 .env
 .env.local

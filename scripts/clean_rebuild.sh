@@ -99,6 +99,22 @@ for f in "${ENV_FILES[@]}"; do
   fi
 done
 
+# Ensure frontend generated directory exists with correct permissions
+echo ">> Ensuring frontend/src/generated directory exists"
+GENERATED_DIR="frontend/src/generated"
+if [[ ! -d "${GENERATED_DIR}" ]]; then
+  mkdir -p "${GENERATED_DIR}"
+  echo "   - created ${GENERATED_DIR}"
+fi
+
+# Set correct permissions (readable/writable by user and group)
+chmod 755 "${GENERATED_DIR}" 2>/dev/null || true
+if [[ ! -f "${GENERATED_DIR}/.gitkeep" ]]; then
+  touch "${GENERATED_DIR}/.gitkeep"
+  echo "   - created .gitkeep"
+fi
+echo "   - ${GENERATED_DIR} ready"
+
 echo ">> Rebuilding without cache and starting up"
 docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" build --no-cache
 docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up --build

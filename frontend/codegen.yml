@@ -1,0 +1,35 @@
+schema:
+  # Use GRAPHQL_API for server-side (Docker) or NEXT_PUBLIC_GRAPHQL_API for client-side
+  # In Docker, use backend service name; locally, use localhost
+  - ${GRAPHQL_API:-http://localhost:4000/graphql}:
+      headers:
+        # No auth needed for schema introspection
+        Content-Type: application/json
+  # Fallback to schema file if URL is not available
+  - ../backend/src/schema.gql
+
+documents:
+  - 'src/lib/auth.graphql.ts'
+  # Add other GraphQL files here as needed
+  # - 'src/**/*.{ts,tsx}'
+generates:
+  src/generated/graphql.ts:
+    plugins:
+      - typescript
+      - typescript-operations
+      - typescript-react-apollo
+    config:
+      withHooks: true
+      withComponent: false
+      withHOC: false
+      skipTypename: false
+      enumsAsTypes: true
+      scalars:
+        DateTime: string
+        JSONObject: Record<string, any>
+      # Use exact types for better type safety
+      avoidOptionals: false
+      maybeValue: T | null
+      # Export all types
+      exportFragmentSpreadSubTypes: true
+
