@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginInput } from './dto/login.input';
@@ -15,7 +16,7 @@ export class AuthService {
     private readonly config: ConfigService
   ) {}
 
-  async register(input: RegisterInput) {
+  async register(input: RegisterInput, req?: Request, res?: Response) {
     const email = input.email.toLowerCase();
 
     const existing = await this.prisma.user.findFirst({
@@ -44,10 +45,15 @@ export class AuthService {
     const tokens = await this.issueTokens(user);
     await this.storeRefreshToken(user.id, tokens.refreshToken);
 
+    // Set refreshToken in httpOnly cookie
+    if (res) {
+      this.setRefreshTokenCookie(res, tokens.refreshToken);
+    }
+
     return { ...tokens, user };
   }
 
-  async login(input: LoginInput) {
+  async login(input: LoginInput, req?: Request, res?: Response) {
     const email = input.email.toLowerCase();
     const user = await this.prisma.user.findUnique({ where: { email } });
 
@@ -63,18 +69,30 @@ export class AuthService {
     const tokens = await this.issueTokens(user);
     await this.storeRefreshToken(user.id, tokens.refreshToken);
 
+    // Set refreshToken in httpOnly cookie
+    if (res) {
+      this.setRefreshTokenCookie(res, tokens.refreshToken);
+    }
+
     return { ...tokens, user };
   }
 
-  async refresh(input: RefreshTokenInput) {
-    const payload = await this.verifyRefreshToken(input.refreshToken);
+  async refresh(input: RefreshTokenInput, req?: Request, res?: Response) {
+    // Try to get refreshToken from cookie first, then from input
+    const refreshToken = (req?.cookies as { refreshToken?: string })?.refreshToken || input.refreshToken;
+    
+    if (!refreshToken) {
+      throw new UnauthorizedException('Refresh token is required');
+    }
+
+    const payload = await this.verifyRefreshToken(refreshToken);
     const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
 
     if (!user || !user.refreshTokenHash) {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    const valid = await bcrypt.compare(input.refreshToken, user.refreshTokenHash);
+    const valid = await bcrypt.compare(refreshToken, user.refreshTokenHash);
     if (!valid) {
       throw new UnauthorizedException('Invalid refresh token');
     }
@@ -82,18 +100,30 @@ export class AuthService {
     const tokens = await this.issueTokens(user);
     await this.storeRefreshToken(user.id, tokens.refreshToken);
 
+    // Set new refreshToken in httpOnly cookie
+    if (res) {
+      this.setRefreshTokenCookie(res, tokens.refreshToken);
+    }
+
     return { ...tokens, user };
   }
 
-  async logout(input: RefreshTokenInput) {
-    const payload = await this.verifyRefreshToken(input.refreshToken);
+  async logout(input: RefreshTokenInput, req?: Request, res?: Response) {
+    // Try to get refreshToken from cookie first, then from input
+    const refreshToken = (req?.cookies as { refreshToken?: string })?.refreshToken || input.refreshToken;
+    
+    if (!refreshToken) {
+      throw new UnauthorizedException('Refresh token is required');
+    }
+
+    const payload = await this.verifyRefreshToken(refreshToken);
     const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
 
     if (!user || !user.refreshTokenHash) {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    const valid = await bcrypt.compare(input.refreshToken, user.refreshTokenHash);
+    const valid = await bcrypt.compare(refreshToken, user.refreshTokenHash);
     if (!valid) {
       throw new UnauthorizedException('Invalid refresh token');
     }
@@ -102,6 +132,11 @@ export class AuthService {
       where: { id: user.id },
       data: { refreshTokenHash: null, tokenVersion: { increment: 1 } },
     });
+
+    // Clear refreshToken cookie
+    if (res) {
+      this.clearRefreshTokenCookie(res);
+    }
 
     return true;
   }
@@ -158,4 +193,31 @@ export class AuthService {
   private refreshSecret() {
     return this.config.get<string>('JWT_REFRESH_SECRET') || this.accessSecret();
   }
+
+  /**
+   * Set refreshToken in httpOnly cookie
+   */
+  private setRefreshTokenCookie = (res: Response, refreshToken: string): void => {
+    const isProduction = this.config.get<string>('NODE_ENV') === 'production';
+    
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true, // Prevent XSS attacks
+      secure: isProduction, // Only send over HTTPS in production
+      sameSite: 'lax', // CSRF protection
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: '/',
+    });
+  };
+
+  /**
+   * Clear refreshToken cookie
+   */
+  private clearRefreshTokenCookie = (res: Response): void => {
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: this.config.get<string>('NODE_ENV') === 'production',
+      sameSite: 'lax',
+      path: '/',
+    });
+  };
 }
