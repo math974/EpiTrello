@@ -13,8 +13,8 @@ const bootstrap = async () => {
   app.use(cookieParser());
   
   // Configure CORS properly for credentials
-  const config = app.get(ConfigService);
-  const corsOrigin = config.get<string>('CORS_ORIGIN');
+  const configService = app.get(ConfigService);
+  const corsOrigin = configService.get<string>('CORS_ORIGIN');
   
   if (!corsOrigin) {
     throw new Error('CORS_ORIGIN environment variable is required');
@@ -53,7 +53,8 @@ const bootstrap = async () => {
   );
 
   app.useGlobalFilters(new GraphqlHttpExceptionFilter());
-  const nodeEnv = config.get<string>('NODE_ENV') ?? 'development';
+
+  const nodeEnv = configService.get<string>('NODE_ENV') ?? 'development';
   if (nodeEnv !== 'production') {
     app.useLogger(['error']);
     const httpLogger = new Logger('HTTP');
@@ -68,7 +69,7 @@ const bootstrap = async () => {
       next();
     });
   }
-  const port = config.get<number>('PORT') ?? 4000;
+  const port = configService.get<number>('PORT') ?? 4000;
   await app.listen(port);
   console.log(`🚀 GraphQL ready at http://localhost:${port}/graphql`);
 };

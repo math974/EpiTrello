@@ -79,9 +79,17 @@ export class AuthService {
 
   async refresh(input: RefreshTokenInput, req?: Request, res?: Response) {
     // Try to get refreshToken from cookie first, then from input
-    const refreshToken = (req?.cookies as { refreshToken?: string })?.refreshToken || input.refreshToken;
+    const cookies = req?.cookies as { refreshToken?: string } | undefined;
+    const refreshToken = cookies?.refreshToken || input.refreshToken;
+    
+    console.log('🔄 Refresh token request:', {
+      hasCookie: !!cookies?.refreshToken,
+      hasInput: !!input.refreshToken,
+      cookieKeys: cookies ? Object.keys(cookies) : [],
+    });
     
     if (!refreshToken) {
+      console.error('❌ No refresh token found in cookie or input');
       throw new UnauthorizedException('Refresh token is required');
     }
 
@@ -197,22 +205,29 @@ export class AuthService {
   /**
    * Set refreshToken in httpOnly cookie
    */
-  private setRefreshTokenCookie = (res: Response, refreshToken: string): void => {
+  private setRefreshTokenCookie = (res: Response, refreshToken: string) => {
     const isProduction = this.config.get<string>('NODE_ENV') === 'production';
     
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true, // Prevent XSS attacks
       secure: isProduction, // Only send over HTTPS in production
-      sameSite: 'lax', // CSRF protection
+      sameSite: isProduction ? 'lax' : 'lax', // CSRF protection - 'lax' allows cookies on same-site requests
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       path: '/',
+    });
+    
+    console.log('🍪 Set refreshToken cookie:', {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'lax' : 'lax',
+      maxAge: '7 days',
     });
   };
 
   /**
    * Clear refreshToken cookie
    */
-  private clearRefreshTokenCookie = (res: Response): void => {
+  private clearRefreshTokenCookie = (res: Response) => {
     res.clearCookie('refreshToken', {
       httpOnly: true,
       secure: this.config.get<string>('NODE_ENV') === 'production',

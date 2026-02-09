@@ -1,4 +1,5 @@
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { UnauthorizedException } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginInput } from './dto/login.input';
@@ -32,7 +33,7 @@ export class AuthResolver {
 
   @Mutation(() => AuthPayload)
   refreshToken(
-    @Args('input', { type: () => RefreshTokenInput, nullable: true }) input: RefreshTokenInput = {},
+    @Args('input', { type: () => RefreshTokenInput, nullable: true, defaultValue: {} }) input: RefreshTokenInput = {},
     @Context('req') req: Request,
     @Context('res') res: Response
   ) {
@@ -41,7 +42,7 @@ export class AuthResolver {
 
   @Mutation(() => Boolean)
   logout(
-    @Args('input', { type: () => RefreshTokenInput, nullable: true }) input: RefreshTokenInput = {},
+    @Args('input', { type: () => RefreshTokenInput, nullable: true, defaultValue: {} }) input: RefreshTokenInput = {},
     @Context('req') req: Request,
     @Context('res') res: Response
   ) {
@@ -49,7 +50,13 @@ export class AuthResolver {
   }
 
   @Query(() => UserModel, { nullable: true })
-  me(@Context('user') user: UserModel | null) {
+  me(@Context('user') user: UserModel | null, @Context('req') req: Request) {
+    // If no user but we have an authorization header, the token might be expired
+    // Throw UNAUTHENTICATED to trigger automatic refresh
+    if (!user && req?.headers?.authorization) {
+      throw new UnauthorizedException('Unauthorized');
+    }
+    // Return null if no user and no token (for public access)
     return user;
   }
 
