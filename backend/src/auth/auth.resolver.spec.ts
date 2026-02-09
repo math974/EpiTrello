@@ -127,14 +127,31 @@ describe('AuthResolver', () => {
         email: 'test@example.com',
         username: 'testuser',
       } as UserModel;
+      const mockReq = {
+        headers: {},
+      } as any;
 
-      expect(resolver.me(user)).toBe(user);
+      expect(resolver.me(user, mockReq)).toBe(user);
     });
 
-    it('returns null when no user is in context', () => {
+    it('returns null when no user is in context and no auth header', () => {
       const resolver = createResolver();
+      const mockReq = {
+        headers: {},
+      } as any;
 
-      expect(resolver.me(null)).toBeNull();
+      expect(resolver.me(null, mockReq)).toBeNull();
+    });
+
+    it('throws UnauthorizedException when no user but auth header present', () => {
+      const resolver = createResolver();
+      const mockReq = {
+        headers: {
+          authorization: 'Bearer expired-token',
+        },
+      } as any;
+
+      expect(() => resolver.me(null, mockReq)).toThrow('Unauthorized');
     });
   });
 
