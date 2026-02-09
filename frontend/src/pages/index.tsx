@@ -1,4 +1,7 @@
+import { useEffect } from 'react';
+import { useRouter } from 'next/router';
 import Link from 'next/link';
+import { useAuth } from '@/components/auth/AuthProvider';
 
 const FEATURE_LIST = [
   {
@@ -31,6 +34,33 @@ const STEPS = [
 ];
 
 export default function LandingPage() {
+  const router = useRouter();
+  const { user, loading } = useAuth();
+
+  // Redirect to /boards if user is authenticated
+  useEffect(() => {
+    if (!loading && user) {
+      router.replace('/boards');
+    }
+  }, [user, loading, router]);
+
+  // Show loading state while checking authentication
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
+        <div className="text-center">
+          <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-sky-300 border-t-transparent mx-auto" />
+          <p className="text-sm text-white/70">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render landing page if user is authenticated (will redirect)
+  if (user) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <div className="relative overflow-hidden">

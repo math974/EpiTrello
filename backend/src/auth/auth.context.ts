@@ -9,7 +9,7 @@ export class AuthContextService {
     private readonly prisma: PrismaService
   ) {}
 
-  async buildContext(req: { headers?: Record<string, string | undefined> }) {
+  async buildContext(req: { headers?: Record<string, string | undefined>; cookies?: Record<string, string> }) {
     const authHeader = req.headers?.authorization;
     const payload = await this.authService.getAccessPayload(authHeader);
     const user = payload
@@ -17,6 +17,6 @@ export class AuthContextService {
       : null;
     const validUser = user && user.tokenVersion === payload?.tokenVersion ? user : null;
 
-    return { req, user: validUser };
+    return { user: validUser };
   }
 }

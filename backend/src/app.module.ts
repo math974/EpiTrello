@@ -32,7 +32,7 @@ import { AttachmentsModule } from './attachments/attachments.module';
         autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
         sortSchema: true,
         playground: true,
-        context: async ({ req, res }: { req: any; res: any }) =>
+        context: async ({ req, res }: { req: { headers?: Record<string, string | undefined>; cookies?: Record<string, string> }; res: any }) =>
           ({ ...(await authContext.buildContext(req)), req, res }),
       }),
     }),

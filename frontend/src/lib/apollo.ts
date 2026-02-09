@@ -64,31 +64,45 @@ const processQueue = (error: any, token: string | null = null) => {
 };
 
 // Create a simple HTTP client for refresh (to avoid circular dependency)
+// Uses cookie automatically via credentials: 'include'
 const refreshToken = async (): Promise<string | null> => {
   try {
+    console.log('🔄 Attempting to refresh token via cookie...');
     const response = await fetch(graphqlUri, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      credentials: 'include', // Include cookies
+      credentials: 'include', // Include cookies (refreshToken is in httpOnly cookie)
       body: JSON.stringify({
         query: print(REFRESH_TOKEN_MUTATION),
         variables: {
-          input: {},
+          input: {}, // Empty input - will use cookie
         },
       }),
     });
 
+    if (!response.ok) {
+      console.error('❌ Refresh token request failed:', response.status, response.statusText);
+      return null;
+    }
+
     const result = await response.json();
     
+    if (result.errors) {
+      console.error('❌ GraphQL errors during refresh:', result.errors);
+      return null;
+    }
+    
     if (result.data?.refreshToken?.accessToken) {
+      console.log('✅ Token refreshed successfully');
       return result.data.refreshToken.accessToken;
     }
     
+    console.warn('⚠️ No access token in refresh response:', result);
     return null;
   } catch (error) {
-    console.error('Failed to refresh token:', error);
+    console.error('❌ Failed to refresh token:', error);
     return null;
   }
 };
@@ -98,14 +112,34 @@ const refreshToken = async (): Promise<string | null> => {
 let errorLink: any;
 
 if (isBrowser && onError && typeof onError === 'function') {
+  console.log('✅ Error link configured for automatic token refresh');
   // @ts-ignore - onError function signature compatibility
   errorLink = onError(({ graphQLErrors, networkError, operation, forward }) => {
+    console.log('🔍 Error link triggered:', { 
+      hasGraphQLErrors: !!graphQLErrors, 
+      hasNetworkError: !!networkError,
+      operationName: operation.operationName 
+    });
+    
     if (graphQLErrors) {
+      console.log('📋 GraphQL errors:', graphQLErrors.map((e: any) => ({
+        message: e.message,
+        code: e.extensions?.code,
+        originalError: e.extensions?.originalError,
+        path: e.path
+      })));
+      
+      // Check for UNAUTHENTICATED or Unauthorized errors
       const isUnauthenticated = graphQLErrors.some(
-        (err: any) => err.extensions?.code === 'UNAUTHENTICATED'
+        (err: any) => 
+          err.extensions?.code === 'UNAUTHENTICATED' ||
+          err.extensions?.code === 'Unauthorized' ||
+          err.message === 'Unauthorized' ||
+          (err.extensions?.originalError?.statusCode === 401)
       );
 
       if (isUnauthenticated) {
+        console.log('🔐 UNAUTHENTICATED error detected, attempting automatic refresh...');
         // If we're already refreshing, queue this request
         if (isRefreshing) {
           return new Observable((observer) => {

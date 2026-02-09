@@ -79,7 +79,8 @@ export class AuthService {
 
   async refresh(input: RefreshTokenInput, req?: Request, res?: Response) {
     // Try to get refreshToken from cookie first, then from input
-    const refreshToken = (req?.cookies as { refreshToken?: string })?.refreshToken || input.refreshToken;
+    const cookies = req?.cookies as { refreshToken?: string } | undefined;
+    const refreshToken = cookies?.refreshToken || input.refreshToken;
     
     if (!refreshToken) {
       throw new UnauthorizedException('Refresh token is required');
@@ -197,13 +198,13 @@ export class AuthService {
   /**
    * Set refreshToken in httpOnly cookie
    */
-  private setRefreshTokenCookie = (res: Response, refreshToken: string): void => {
+  private setRefreshTokenCookie = (res: Response, refreshToken: string) => {
     const isProduction = this.config.get<string>('NODE_ENV') === 'production';
     
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true, // Prevent XSS attacks
       secure: isProduction, // Only send over HTTPS in production
-      sameSite: 'lax', // CSRF protection
+      sameSite: 'lax', // CSRF protection - 'lax' allows cookies on same-site requests
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       path: '/',
     });
@@ -212,7 +213,7 @@ export class AuthService {
   /**
    * Clear refreshToken cookie
    */
-  private clearRefreshTokenCookie = (res: Response): void => {
+  private clearRefreshTokenCookie = (res: Response) => {
     res.clearCookie('refreshToken', {
       httpOnly: true,
       secure: this.config.get<string>('NODE_ENV') === 'production',
