@@ -14,10 +14,26 @@ export class GraphqlHttpExceptionFilter implements ExceptionFilter {
       ? response.message.join(', ')
       : response?.message || exception.message;
 
+    // Map HTTP status codes to GraphQL error codes
+    let errorCode = response?.error || 'HTTP_ERROR';
+    if (status === 401) {
+      errorCode = 'UNAUTHENTICATED';
+    } else if (status === 403) {
+      errorCode = 'FORBIDDEN';
+    } else if (status === 404) {
+      errorCode = 'NOT_FOUND';
+    } else if (status === 400) {
+      errorCode = 'BAD_REQUEST';
+    }
+
     throw new GraphQLError(message, {
       extensions: {
-        code: response?.error || 'HTTP_ERROR',
+        code: errorCode,
         status,
+        originalError: {
+          statusCode: status,
+          message,
+        },
       },
       path: ctx?.path,
     });
