@@ -44,8 +44,12 @@ describe('GraphqlHttpExceptionFilter', () => {
       expect(graphQLError).toBeInstanceOf(GraphQLError);
       expect(graphQLError.message).toBe('Test error message');
       expect(graphQLError.extensions).toEqual({
-        code: 'HTTP_ERROR',
+        code: 'BAD_REQUEST',
         status: 400,
+        originalError: {
+          statusCode: 400,
+          message: 'Test error message',
+        },
       });
       expect(graphQLError.path).toEqual(['test', 'query']);
     }
@@ -66,8 +70,12 @@ describe('GraphqlHttpExceptionFilter', () => {
       expect(graphQLError).toBeInstanceOf(GraphQLError);
       expect(graphQLError.message).toBe('Custom error message');
       expect(graphQLError.extensions).toEqual({
-        code: 'CUSTOM_ERROR',
+        code: 'FORBIDDEN',
         status: 403,
+        originalError: {
+          statusCode: 403,
+          message: 'Custom error message',
+        },
       });
     }
   });
@@ -87,8 +95,12 @@ describe('GraphqlHttpExceptionFilter', () => {
       expect(graphQLError).toBeInstanceOf(GraphQLError);
       expect(graphQLError.message).toBe('Error 1, Error 2');
       expect(graphQLError.extensions).toEqual({
-        code: 'VALIDATION_ERROR',
+        code: 'BAD_REQUEST',
         status: 400,
+        originalError: {
+          statusCode: 400,
+          message: 'Error 1, Error 2',
+        },
       });
     }
   });
@@ -111,6 +123,10 @@ describe('GraphqlHttpExceptionFilter', () => {
       expect(graphQLError.extensions).toEqual({
         code: 'SOME_ERROR',
         status: 500,
+        originalError: {
+          statusCode: 500,
+          message: 'Http Exception',
+        },
       });
     }
   });
