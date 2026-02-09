@@ -1,8 +1,12 @@
+import { useState, FormEvent } from 'react';
+import { useRouter } from 'next/router';
 import Link from 'next/link';
 import OAuthButtons from './OAuthButtons';
 import { Button } from '@/components/shadcn/ui/button';
 import { Input } from '@/components/shadcn/ui/input';
 import { Separator } from '@/components/shadcn/ui/separator';
+import { login } from '@/lib/authClient';
+import { useAuth } from './AuthProvider';
 
 type LoginErrorState = 'none' | 'invalid' | 'network';
 
@@ -11,7 +15,16 @@ type LoginFormProps = {
   oauthLoadingProvider?: 'github' | 'discord' | null;
 };
 
-export default function LoginForm({ errorState = 'none', oauthLoadingProvider = null }: LoginFormProps) {
+export default function LoginForm({ errorState: initialErrorState = 'none', oauthLoadingProvider = null }: LoginFormProps) {
+  const router = useRouter();
+  const { checkAuth } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorState, setErrorState] = useState<LoginErrorState>(initialErrorState);
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+  });
+
   const errorBanner =
     errorState === 'network'
       ? 'Reseau indisponible. Verifiez votre connexion et reessayez.'
@@ -32,12 +45,52 @@ export default function LoginForm({ errorState = 'none', oauthLoadingProvider = 
           {errorBanner}
         </div>
       )}
-      <form className="space-y-4">
+      <form
+        className="space-y-4"
+        onSubmit={async (e: FormEvent<HTMLFormElement>) => {
+          e.preventDefault();
+          setIsLoading(true);
+          setErrorState('none');
+
+          try {
+            // Call login mutation
+            await login(formData.email, formData.password);
+
+            // Token is already stored by login() function
+            // Refresh auth state
+            await checkAuth();
+
+            // Redirect to /boards route
+            await router.push('/boards');
+          } catch (error: any) {
+            setIsLoading(false);
+            // Handle different error types
+            if (error?.graphQLErrors && Array.isArray(error.graphQLErrors) && error.graphQLErrors.length > 0) {
+              const gqlError = error.graphQLErrors[0];
+              if (gqlError?.extensions?.code === 'UNAUTHORIZED' || gqlError?.extensions?.code === 'BAD_REQUEST') {
+                setErrorState('invalid');
+              } else {
+                setErrorState('network');
+              }
+            } else if (error?.networkError) {
+              setErrorState('network');
+            } else {
+              // Log error for debugging
+              console.error('Login error:', error);
+              setErrorState('network');
+            }
+          }
+        }}
+      >
         <div>
           <label className="block text-sm font-medium text-white/80">Email</label>
           <Input
             type="email"
             placeholder="vous@exemple.com"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            required
+            disabled={isLoading}
             className={`mt-1 bg-white/10 text-white placeholder:text-white/40 border-white/10 focus-visible:ring-sky-300 ${
               fieldErrors.email ? 'border-red-300 focus-visible:ring-red-200' : ''
             }`}
@@ -49,6 +102,10 @@ export default function LoginForm({ errorState = 'none', oauthLoadingProvider = 
           <Input
             type="password"
             placeholder="••••••••"
+            value={formData.password}
+            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+            required
+            disabled={isLoading}
             className={`mt-1 bg-white/10 text-white placeholder:text-white/40 border-white/10 focus-visible:ring-sky-300 ${
               fieldErrors.password ? 'border-red-300 focus-visible:ring-red-200' : ''
             }`}
@@ -57,9 +114,10 @@ export default function LoginForm({ errorState = 'none', oauthLoadingProvider = 
         </div>
         <Button
           type="submit"
-          className="w-full bg-gradient-to-r from-sky-300 to-emerald-300 text-slate-950 shadow-lg shadow-emerald-500/30 hover:-translate-y-0.5"
+          disabled={isLoading}
+          className="w-full bg-gradient-to-r from-sky-300 to-emerald-300 text-slate-950 shadow-lg shadow-emerald-500/30 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Se connecter
+          {isLoading ? 'Connexion en cours...' : 'Se connecter'}
         </Button>
       </form>
 

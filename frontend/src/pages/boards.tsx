@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import Navbar from '../components/Navbar';
+import { useAuth } from '../components/auth/AuthProvider';
 
 const RECENT_BOARDS = [
   { id: 'board-1', name: 'Lancement mobile' },
@@ -50,9 +52,49 @@ const WORKSPACE_COLLABORATORS: Record<
 };
 
 export default function BoardsPage() {
+  const router = useRouter();
+  const { user, loading, checkAuth } = useAuth();
   const [activePanel, setActivePanel] = useState<'tableaux' | { workspaceId: string; view: 'boards' | 'members' | 'settings' } | null>('tableaux');
   const [openWorkspaces, setOpenWorkspaces] = useState<string[]>([]);
   const [openWorkspaceBoards, setOpenWorkspaceBoards] = useState<string[]>([]);
+
+  // Check authentication on mount and attempt refresh if needed
+  useEffect(() => {
+    const verifyAuth = async () => {
+      if (!loading) {
+        // If no user, try to refresh auth (might have valid refresh token cookie)
+        if (!user) {
+          await checkAuth();
+        }
+      }
+    };
+
+    verifyAuth();
+  }, [loading, user, checkAuth]);
+
+  // Redirect to login if not authenticated after checking
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace('/login');
+    }
+  }, [user, loading, router]);
+
+  // Show loading state while checking authentication
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
+        <div className="text-center">
+          <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-sky-300 border-t-transparent mx-auto" />
+          <p className="text-sm text-white/70">Verification de l'authentification...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render if not authenticated (will redirect)
+  if (!user) {
+    return null;
+  }
 
   const toggleWorkspace = (workspaceId: string) => {
     setOpenWorkspaces((prev) =>
