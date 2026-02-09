@@ -8,7 +8,7 @@ import { Separator } from '@/components/shadcn/ui/separator';
 import { login } from '@/lib/authClient';
 import { useAuth } from './AuthProvider';
 
-type LoginErrorState = 'none' | 'invalid' | 'network';
+type LoginErrorState = 'none' | 'invalid' | 'network' | 'oauth';
 
 type LoginFormProps = {
   errorState?: LoginErrorState;
@@ -30,7 +30,9 @@ export default function LoginForm({ errorState: initialErrorState = 'none', oaut
       ? 'Reseau indisponible. Verifiez votre connexion et reessayez.'
       : errorState === 'invalid'
         ? 'Identifiants invalides. Verifiez votre email et mot de passe.'
-        : null;
+        : errorState === 'oauth'
+          ? 'Erreur lors de la connexion OAuth. Veuillez reessayer.'
+          : null;
   const fieldErrors = errorState === 'invalid'
     ? {
         email: 'Email invalide',

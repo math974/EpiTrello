@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { me, UserModel } from '@/lib/authClient';
+import { me, logout as logoutClient, UserModel } from '@/lib/authClient';
 import { getAccessToken, setAccessToken } from '@/lib/tokenStore';
 import { REFRESH_TOKEN_MUTATION } from '@/lib/auth.graphql';
 import { print } from 'graphql';
@@ -9,6 +9,7 @@ interface AuthContextType {
   loading: boolean;
   isAuthenticated: boolean;
   checkAuth: () => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,6 +29,24 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<UserModel | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const handleLogout = async () => {
+    try {
+      await logoutClient();
+      setUser(null);
+      // Redirect to login page
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Even if logout fails, clear local state and redirect
+      setUser(null);
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
+    }
+  };
 
   const checkAuth = async () => {
     try {
@@ -108,6 +127,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     loading,
     isAuthenticated: !!user,
     checkAuth,
+    logout: handleLogout,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

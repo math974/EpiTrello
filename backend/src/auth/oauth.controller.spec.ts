@@ -19,6 +19,7 @@ describe('OAuthController', () => {
 
   const mockResponse = {
     redirect: jest.fn(),
+    cookie: jest.fn(),
   } as unknown as Response;
 
   beforeEach(async () => {
@@ -74,8 +75,19 @@ describe('OAuthController', () => {
       await controller.googleAuthCallback(mockRequest, mockResponse);
 
       expect(oauthService.handleOAuthCallback).toHaveBeenCalledWith(mockRequest.user);
+      expect(mockResponse.cookie).toHaveBeenCalledWith(
+        'refreshToken',
+        'refresh-token',
+        expect.objectContaining({
+          httpOnly: true,
+          secure: false, // NODE_ENV is not 'production' in tests
+          sameSite: 'lax',
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+          path: '/',
+        })
+      );
       expect(mockResponse.redirect).toHaveBeenCalledWith(
-        'http://localhost:3000/auth/callback?accessToken=access-token&refreshToken=refresh-token'
+        'http://localhost:3000/oauth/callback?accessToken=access-token'
       );
     });
 
@@ -100,8 +112,19 @@ describe('OAuthController', () => {
 
       await controller.googleAuthCallback(mockRequest, mockResponse);
 
+      expect(mockResponse.cookie).toHaveBeenCalledWith(
+        'refreshToken',
+        'refresh-token',
+        expect.objectContaining({
+          httpOnly: true,
+          secure: false,
+          sameSite: 'lax',
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+          path: '/',
+        })
+      );
       expect(mockResponse.redirect).toHaveBeenCalledWith(
-        'http://localhost:3000/auth/callback?accessToken=access-token&refreshToken=refresh-token'
+        'http://localhost:3000/oauth/callback?accessToken=access-token'
       );
     });
   });
@@ -145,8 +168,19 @@ describe('OAuthController', () => {
       await controller.githubAuthCallback(githubRequest, mockResponse);
 
       expect(oauthService.handleOAuthCallback).toHaveBeenCalledWith(githubRequest.user);
+      expect(mockResponse.cookie).toHaveBeenCalledWith(
+        'refreshToken',
+        'refresh-token',
+        expect.objectContaining({
+          httpOnly: true,
+          secure: false,
+          sameSite: 'lax',
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+          path: '/',
+        })
+      );
       expect(mockResponse.redirect).toHaveBeenCalledWith(
-        'http://localhost:3000/auth/callback?accessToken=access-token&refreshToken=refresh-token'
+        'http://localhost:3000/oauth/callback?accessToken=access-token'
       );
     });
   });

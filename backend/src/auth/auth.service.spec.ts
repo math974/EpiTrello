@@ -73,7 +73,6 @@ describe('AuthService.register', () => {
     });
     expect(result).toEqual({
       accessToken: 'access-token',
-      refreshToken: 'refresh-token',
       user: {
         id: 'user-1',
         email: 'test@example.com',
@@ -169,7 +168,6 @@ describe('AuthService.login', () => {
     });
     expect(result).toEqual({
       accessToken: 'access-token',
-      refreshToken: 'refresh-token',
       user: {
         id: 'user-1',
         email: 'test@example.com',

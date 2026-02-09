@@ -3,6 +3,13 @@ import { useRouter } from 'next/router';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../components/auth/AuthProvider';
 
+// Disable static generation for this page (requires authentication)
+export const getServerSideProps = async () => {
+  return {
+    props: {},
+  };
+};
+
 const RECENT_BOARDS = [
   { id: 'board-1', name: 'Lancement mobile' },
   { id: 'board-2', name: 'Roadmap produit' },

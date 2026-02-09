@@ -50,7 +50,8 @@ export class AuthService {
       this.setRefreshTokenCookie(res, tokens.refreshToken);
     }
 
-    return { ...tokens, user };
+    // Don't return refreshToken in response - it's in httpOnly cookie for security
+    return { accessToken: tokens.accessToken, user };
   }
 
   async login(input: LoginInput, req?: Request, res?: Response) {
@@ -74,7 +75,8 @@ export class AuthService {
       this.setRefreshTokenCookie(res, tokens.refreshToken);
     }
 
-    return { ...tokens, user };
+    // Don't return refreshToken in response - it's in httpOnly cookie for security
+    return { accessToken: tokens.accessToken, user };
   }
 
   async refresh(input: RefreshTokenInput, req?: Request, res?: Response) {

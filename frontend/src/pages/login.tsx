@@ -4,7 +4,7 @@ import AuthLayout from '../components/auth/AuthLayout';
 import LoginForm from '../components/auth/LoginForm';
 import { useAuth } from '@/components/auth/AuthProvider';
 
-type LoginErrorState = 'none' | 'invalid' | 'network';
+type LoginErrorState = 'none' | 'invalid' | 'network' | 'oauth';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -19,7 +19,7 @@ export default function LoginPage() {
 
   const errorState = useMemo<LoginErrorState>(() => {
     const value = router.query.error;
-    if (value === 'invalid' || value === 'network') return value;
+    if (value === 'invalid' || value === 'network' || value === 'oauth') return value;
     if (value === 'none') return 'none';
     return 'none';
   }, [router.query.error]);
