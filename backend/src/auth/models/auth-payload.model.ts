@@ -6,8 +6,8 @@ export class AuthPayload {
   @Field()
   accessToken!: string;
 
-  @Field()
-  refreshToken!: string;
+  @Field({ nullable: true })
+  refreshToken?: string; // Optional - only returned for refreshToken mutation, not for login/register
 
   @Field(() => UserModel)
   user!: UserModel;
