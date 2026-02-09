@@ -1,9 +1,14 @@
 import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
+import { useAuth } from '@/components/auth/AuthProvider';
+import LogoutConfirmModal from '@/components/auth/LogoutConfirmModal';
 
 export default function Navbar() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { user, logout } = useAuth();
 
   return (
     <nav className="bg-gradient-to-r from-trello-blue-darker via-trello-blue-dark to-trello-blue h-12 flex items-center justify-between px-4 shadow-md">
@@ -121,7 +126,7 @@ export default function Navbar() {
             onClick={() => setShowProfileMenu(!showProfileMenu)}
             className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white font-semibold text-sm hover:ring-2 hover:ring-white/50 transition-all"
           >
-            U
+            {user?.username?.[0]?.toUpperCase() || 'U'}
           </button>
 
           {showProfileMenu && (
@@ -131,10 +136,12 @@ export default function Navbar() {
                 <div className="px-4 py-3 border-b border-gray-100">
                   <p className="text-xs text-trello-gray uppercase tracking-wide">Compte</p>
                   <div className="flex items-center gap-3 mt-2">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white font-semibold">U</div>
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white font-semibold">
+                      {user?.username?.[0]?.toUpperCase() || 'U'}
+                    </div>
                     <div>
-                      <p className="font-medium text-trello-navy">Utilisateur</p>
-                      <p className="text-sm text-trello-gray">user@epitrello.com</p>
+                      <p className="font-medium text-trello-navy">{user?.username || 'Utilisateur'}</p>
+                      <p className="text-sm text-trello-gray">{user?.email || 'user@epitrello.com'}</p>
                     </div>
                   </div>
                 </div>
@@ -145,13 +152,38 @@ export default function Navbar() {
                   <a href='/u/utilisateur/account#settings'><MenuLink>Paramètres</MenuLink></a>
                 </div>
                 <div className="border-t border-gray-100 py-1">
-                  <MenuLink>Se déconnecter</MenuLink>
+                  <button
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      setShowLogoutModal(true);
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-trello-navy hover:bg-gray-100 transition-colors"
+                  >
+                    Se déconnecter
+                  </button>
                 </div>
               </div>
             </>
           )}
         </div>
       </div>
+
+      <LogoutConfirmModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={async () => {
+          setIsLoggingOut(true);
+          try {
+            await logout();
+          } catch (error) {
+            console.error('Logout error:', error);
+          } finally {
+            setIsLoggingOut(false);
+            setShowLogoutModal(false);
+          }
+        }}
+        isLoading={isLoggingOut}
+      />
     </nav>
   );
 }

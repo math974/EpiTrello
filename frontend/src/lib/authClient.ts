@@ -4,9 +4,11 @@ import {
   LoginDocument,
   RegisterDocument,
   MeDocument,
+  LogoutDocument,
   LoginMutation,
   RegisterMutation,
   MeQuery,
+  LogoutMutation,
   UserModel,
   AuthPayload,
 } from '../generated/graphql';
@@ -100,6 +102,34 @@ export async function me(): Promise<UserModel | null> {
     if (error.graphQLErrors?.some((e: any) => e.extensions?.code === 'UNAUTHENTICATED')) {
       clearAccessToken();
     }
+    throw error;
+  }
+}
+
+/**
+ * Logout the current user
+ * @returns true if logout successful
+ * @throws Error if logout fails
+ */
+export async function logout(): Promise<boolean> {
+  try {
+    const { data } = await apolloClient.mutate<LogoutMutation>({
+      mutation: LogoutDocument,
+      variables: {
+        input: {}, // Empty input - will use cookie
+      },
+      context: {
+        credentials: 'include', // Include cookies for refresh token
+      },
+    });
+
+    // Clear access token from localStorage
+    clearAccessToken();
+
+    return data?.logout ?? false;
+  } catch (error: any) {
+    // Even if logout fails on backend, clear local token
+    clearAccessToken();
     throw error;
   }
 }
