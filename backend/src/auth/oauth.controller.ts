@@ -18,11 +18,18 @@ export class OAuthController {
   @UseGuards(AuthGuard('google'))
   async googleAuthCallback(@Req() req: Request, @Res() res: Response) {
     const result = await this.oauthService.handleOAuthCallback(req.user as any);
-    // Set tokens in httpOnly cookies or return to frontend
-    // For now, we'll return them in the response body
-    // Frontend can handle storing them
+    // Set refresh token in httpOnly cookie
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.cookie('refreshToken', result.refreshToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: '/',
+    });
+    // Redirect to frontend callback with access token in URL
     res.redirect(
-      `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/callback?accessToken=${result.accessToken}&refreshToken=${result.refreshToken}`
+      `${process.env.FRONTEND_URL || 'http://localhost:3000'}/oauth/callback?accessToken=${result.accessToken}`
     );
   }
 
@@ -37,11 +44,18 @@ export class OAuthController {
   @UseGuards(AuthGuard('github'))
   async githubAuthCallback(@Req() req: Request, @Res() res: Response) {
     const result = await this.oauthService.handleOAuthCallback(req.user as any);
-    // Set tokens in httpOnly cookies or return to frontend
-    // For now, we'll return them in the response body
-    // Frontend can handle storing them
+    // Set refresh token in httpOnly cookie
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.cookie('refreshToken', result.refreshToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: '/',
+    });
+    // Redirect to frontend callback with access token in URL
     res.redirect(
-      `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/callback?accessToken=${result.accessToken}&refreshToken=${result.refreshToken}`
+      `${process.env.FRONTEND_URL || 'http://localhost:3000'}/oauth/callback?accessToken=${result.accessToken}`
     );
   }
 }
