@@ -14,8 +14,11 @@ export default function BoardCard({ board, onEdit, onDelete, canEdit = false }: 
   const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
 
-  const handleClick = () => {
-    router.push(`/app/boards/${board.id}`);
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('[BoardCard] Navigating to board:', board.id);
+    router.replace(`/app/boards/${board.id}`);
   };
 
   const handleEdit = (e: React.MouseEvent) => {
