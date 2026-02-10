@@ -11,6 +11,7 @@ schema:
 documents:
   - 'src/lib/auth.graphql.ts'
   - 'src/lib/workspaces.graphql.ts'
+  - 'src/lib/boards.graphql.ts'
   # Add other GraphQL files here as needed
   # - 'src/**/*.{ts,tsx}'
 generates:
