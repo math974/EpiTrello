@@ -47,8 +47,15 @@ export default function WorkspaceSidebar() {
         setWorkspaces(data);
 
         // If no workspace selected and we have workspaces, redirect to first one
-        if (!selectedWorkspaceId && data.length > 0 && router.pathname.startsWith('/app')) {
+        // BUT don't redirect if we're on a board page or other specific routes
+        const isBoardPage = router.pathname === '/app/boards/[boardId]' || router.asPath.startsWith('/app/boards/');
+        const isOtherSpecificRoute = router.pathname === '/app' || router.pathname === '/app/index';
+        
+        if (!selectedWorkspaceId && data.length > 0 && router.pathname.startsWith('/app') && !isBoardPage && !isOtherSpecificRoute) {
+          console.log('[WorkspaceSidebar] Auto-redirecting to first workspace');
           router.replace(`/app/workspaces/${data[0].id}`);
+        } else if (isBoardPage) {
+          console.log('[WorkspaceSidebar] On board page, skipping auto-redirect');
         }
       } catch (err: any) {
         setError(err.message || 'Failed to load workspaces');
