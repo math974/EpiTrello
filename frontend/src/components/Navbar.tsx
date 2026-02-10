@@ -13,15 +13,7 @@ export default function Navbar() {
   return (
     <nav className="bg-gradient-to-r from-trello-blue-darker via-trello-blue-dark to-trello-blue h-12 flex items-center justify-between px-4 shadow-md">
       <div className="flex items-center gap-2">
-        <Link href="/boards" className="flex items-center gap-2 text-white">
-          <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
-            <rect x="3" y="3" width="7" height="18" rx="1.5" />
-            <rect x="14" y="3" width="7" height="11" rx="1.5" />
-          </svg>
-          <span className="font-bold text-xl tracking-tight">EpiTrello</span>
-        </Link>
-
-        <div className="hidden md:flex items-center gap-1 ml-4">
+        <div className="hidden md:flex items-center gap-1">
           <NavButton>Espaces de travail</NavButton>
           <NavButton>Récent</NavButton>
           <NavButton>Favoris</NavButton>

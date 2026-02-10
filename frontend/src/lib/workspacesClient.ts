@@ -7,6 +7,7 @@ import {
   WorkspaceDocument,
   AddWorkspaceMemberDocument,
   RemoveWorkspaceMemberDocument,
+  LeaveWorkspaceDocument,
   MyWorkspacesQuery,
   CreateWorkspaceMutation,
   UpdateWorkspaceMutation,
@@ -14,6 +15,7 @@ import {
   WorkspaceQuery,
   AddWorkspaceMemberMutation,
   RemoveWorkspaceMemberMutation,
+  LeaveWorkspaceMutation,
   WorkspaceModel,
   WorkspaceMemberModel,
 } from '../generated/graphql';
@@ -174,6 +176,28 @@ export async function removeWorkspaceMember(workspaceId: string, userId: string)
     });
 
     return data?.removeWorkspaceMember ?? false;
+  } catch (error: any) {
+    throw error;
+  }
+}
+
+/**
+ * Leave a workspace (remove yourself as a member)
+ * @param workspaceId Workspace ID
+ * @returns True if leaving succeeded
+ * @throws Error if leaving fails (e.g., last owner cannot leave)
+ */
+export async function leaveWorkspace(workspaceId: string): Promise<boolean> {
+  try {
+    const { data } = await apolloClient.mutate<LeaveWorkspaceMutation>({
+      mutation: LeaveWorkspaceDocument,
+      variables: {
+        input: { workspaceId },
+      },
+      refetchQueries: [{ query: MyWorkspacesDocument }],
+    });
+
+    return data?.leaveWorkspace ?? false;
   } catch (error: any) {
     throw error;
   }

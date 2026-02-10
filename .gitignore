@@ -27,6 +27,7 @@ build/
 .next/
 out/
 backend/src/schema.gql
+*.tsbuildinfo
 
 # Generated files
 frontend/src/generated/

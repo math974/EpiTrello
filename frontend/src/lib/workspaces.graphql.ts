@@ -92,3 +92,9 @@ export const REMOVE_WORKSPACE_MEMBER_MUTATION = gql`
     removeWorkspaceMember(input: $input)
   }
 `;
+
+export const LEAVE_WORKSPACE_MUTATION = gql`
+  mutation LeaveWorkspace($input: LeaveWorkspaceInput!) {
+    leaveWorkspace(input: $input)
+  }
+`;
