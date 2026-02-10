@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 import { WorkspaceModel, WorkspaceMemberModel } from '../../generated/graphql';
-import { addWorkspaceMember, removeWorkspaceMember, getWorkspace } from '@/lib/workspacesClient';
-import { FiX, FiTrash2, FiUserPlus } from 'react-icons/fi';
+import { addWorkspaceMember, removeWorkspaceMember, getWorkspace, leaveWorkspace } from '@/lib/workspacesClient';
+import { FiX, FiTrash2, FiUserPlus, FiLogOut } from 'react-icons/fi';
 import { useAuth } from '@/components/auth/AuthProvider';
+import LeaveWorkspaceConfirmModal from './LeaveWorkspaceConfirmModal';
 
 type ManageWorkspaceMembersModalProps = {
   isOpen: boolean;
@@ -20,10 +22,13 @@ export default function ManageWorkspaceMembersModal({
   const { user } = useAuth();
   const [members, setMembers] = useState<WorkspaceMemberModel[]>(workspace.members || []);
   const [email, setEmail] = useState('');
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [isRemoving, setIsRemoving] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -92,6 +97,28 @@ export default function ManageWorkspaceMembersModal({
     }
   };
 
+  const handleLeaveWorkspace = async (workspaceId: string) => {
+    try {
+      setIsLeaving(true);
+      await leaveWorkspace(workspaceId);
+      setIsLeaveModalOpen(false);
+      onClose();
+      
+      // Redirect to first available workspace or home
+      const workspaces = await import('@/lib/workspacesClient').then(m => m.myWorkspaces());
+      if (workspaces.length > 0) {
+        router.replace(`/app/workspaces/${workspaces[0].id}`);
+      } else {
+        router.replace('/app');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to leave workspace');
+      throw err;
+    } finally {
+      setIsLeaving(false);
+    }
+  };
+
   const handleClose = () => {
     if (isAdding || isRemoving) return;
     setEmail('');
@@ -103,6 +130,7 @@ export default function ManageWorkspaceMembersModal({
 
   const isOwner = workspace.ownerId === user?.id;
   const canManageMembers = isOwner; // Only workspace owner can manage members
+  const currentUserMember = members.find((m) => m.userId === user?.id);
 
   return (
     <>
@@ -243,18 +271,39 @@ export default function ManageWorkspaceMembersModal({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-2 border-t border-gray-200 px-6 py-4">
-            <button
-              type="button"
-              onClick={handleClose}
-              disabled={isAdding || isRemoving}
-              className="rounded-md border border-gray-200 px-4 py-2 text-sm text-trello-gray hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Close
-            </button>
+          <div className="flex items-center justify-between border-t border-gray-200 px-6 py-4">
+            {currentUserMember && !isOwner && (
+              <button
+                type="button"
+                onClick={() => setIsLeaveModalOpen(true)}
+                disabled={isAdding || isRemoving}
+                className="flex items-center gap-2 rounded-md border border-orange-300 px-4 py-2 text-sm text-orange-600 hover:bg-orange-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <FiLogOut size={16} />
+                Leave Workspace
+              </button>
+            )}
+            <div className="flex items-center justify-end gap-2 ml-auto">
+              <button
+                type="button"
+                onClick={handleClose}
+                disabled={isAdding || isRemoving}
+                className="rounded-md border border-gray-200 px-4 py-2 text-sm text-trello-gray hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      <LeaveWorkspaceConfirmModal
+        isOpen={isLeaveModalOpen}
+        onClose={() => setIsLeaveModalOpen(false)}
+        onConfirm={handleLeaveWorkspace}
+        isLoading={isLeaving}
+        workspace={workspace}
+      />
     </>
   );
 }
