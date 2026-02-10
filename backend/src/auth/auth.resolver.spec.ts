@@ -131,7 +131,7 @@ describe('AuthResolver', () => {
         headers: {},
       } as any;
 
-      expect(resolver.me(user, mockReq)).toBe(user);
+      expect((resolver as any).me(user, mockReq)).toBe(user);
     });
 
     it('returns null when no user is in context and no auth header', () => {
@@ -140,7 +140,7 @@ describe('AuthResolver', () => {
         headers: {},
       } as any;
 
-      expect(resolver.me(null, mockReq)).toBeNull();
+      expect((resolver as any).me(null, mockReq)).toBeNull();
     });
 
     it('throws UnauthorizedException when no user but auth header present', () => {
@@ -151,7 +151,7 @@ describe('AuthResolver', () => {
         },
       } as any;
 
-      expect(() => resolver.me(null, mockReq)).toThrow('Unauthorized');
+      expect(() => (resolver as any).me(null, mockReq)).toThrow('Unauthorized');
     });
   });
 
