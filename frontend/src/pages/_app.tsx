@@ -23,7 +23,7 @@ export default function App({ Component, pageProps }: AppProps) {
               style={{ marginLeft: '256px' }}
             >
               <Navbar />
-              <main className="flex-1 overflow-y-auto">
+              <main className="flex-1 overflow-hidden" style={{ height: 'calc(100vh - 64px)' }}>
                 <Component {...pageProps} />
               </main>
             </div>
