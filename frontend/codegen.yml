@@ -10,6 +10,7 @@ schema:
 
 documents:
   - 'src/lib/auth.graphql.ts'
+  - 'src/lib/workspaces.graphql.ts'
   # Add other GraphQL files here as needed
   # - 'src/**/*.{ts,tsx}'
 generates:
@@ -32,4 +33,12 @@ generates:
       maybeValue: T | null
       # Export all types
       exportFragmentSpreadSubTypes: true
+
+
+
+
+
+
+
+
 
