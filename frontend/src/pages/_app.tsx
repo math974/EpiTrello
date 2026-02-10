@@ -1,6 +1,6 @@
 import type { AppProps } from 'next/app';
 import { useRouter } from 'next/router';
-import { ApolloProvider } from '@apollo/client';
+import { ApolloProvider } from '@apollo/client';      
 import { apolloClient } from '../lib/apollo';
 import { AuthProvider } from '../components/auth/AuthProvider';
 import WorkspaceSidebar from '../components/workspaces/WorkspaceSidebar';
@@ -15,15 +15,19 @@ export default function App({ Component, pageProps }: AppProps) {
     <ApolloProvider client={apolloClient}>
       <AuthProvider>
         {isAppRoute ? (
-          <div className="flex h-screen overflow-hidden">
+          <>
             <WorkspaceSidebar />
-            <div className="flex flex-1 flex-col overflow-hidden transition-all duration-300" id="main-content" style={{ marginLeft: '256px' }}>
+            <div 
+              className="flex flex-1 flex-col overflow-hidden transition-all duration-300" 
+              id="main-content" 
+              style={{ marginLeft: '256px' }}
+            >
               <Navbar />
               <main className="flex-1 overflow-y-auto">
                 <Component {...pageProps} />
               </main>
             </div>
-          </div>
+          </>
         ) : (
           <Component {...pageProps} />
         )}

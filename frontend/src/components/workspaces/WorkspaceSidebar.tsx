@@ -154,36 +154,18 @@ export default function WorkspaceSidebar() {
           borderRight: '1px solid #374151',
         }}
       >
-        {/* Header */}
-        <div style={{ borderBottom: '1px solid #374151', padding: '1rem' }}>
-          <div className={`flex items-center ${collapsed ? 'justify-center' : 'justify-between'}`}>
-            <div className="flex items-center gap-2">
-              <svg className="w-7 h-7 text-trello-blue" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="3" y="3" width="7" height="18" rx="1.5" />
-                <rect x="14" y="3" width="7" height="11" rx="1.5" />
-              </svg>
-              {!collapsed && <span className="font-bold text-lg text-white">EpiTrello</span>}
+          {/* Header */}
+          <div style={{ borderBottom: '1px solid #374151', padding: '1rem' }}>
+            <div className={`flex items-center ${collapsed ? 'justify-center' : 'justify-center'}`}>
+              <div className="flex items-center gap-2">
+                <svg className="w-7 h-7 text-trello-blue" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="3" y="3" width="7" height="18" rx="1.5" />
+                  <rect x="14" y="3" width="7" height="11" rx="1.5" />
+                </svg>
+                {!collapsed && <span className="font-bold text-lg text-white">EpiTrello</span>}
+              </div>
             </div>
-            {!collapsed && (
-              <button
-                onClick={() => setCollapsed(!collapsed)}
-                className="text-gray-400 hover:text-white transition-colors"
-                aria-label="Collapse sidebar"
-              >
-                <FiChevronsLeft size={20} />
-              </button>
-            )}
           </div>
-          {collapsed && (
-            <button
-              onClick={() => setCollapsed(!collapsed)}
-              className="w-full mt-2 flex justify-center text-gray-400 hover:text-white transition-colors"
-              aria-label="Expand sidebar"
-            >
-              <FiChevronsRight size={20} />
-            </button>
-          )}
-        </div>
 
         {/* Workspaces Section */}
         <div className="flex flex-col flex-1 overflow-hidden" style={{ height: 'calc(100vh - 140px)' }}>
@@ -302,6 +284,24 @@ export default function WorkspaceSidebar() {
           )}
         </div>
       </Sidebar>
+
+      {/* Collapse Button - Positioned on the edge, half outside */}
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        className="fixed z-50 w-6 h-12 bg-gray-700 hover:bg-gray-600 border border-gray-600 border-l-0 rounded-r-md flex items-center justify-center text-gray-300 hover:text-white transition-all shadow-lg"
+        style={{
+          top: '50%',
+          transform: 'translateY(-50%)',
+          left: collapsed ? '68px' : '244px', // Position based on sidebar width (80px or 256px) - 12px (half button width)
+        }}
+        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      >
+        {collapsed ? (
+          <FiChevronsRight size={16} />
+        ) : (
+          <FiChevronsLeft size={16} />
+        )}
+      </button>
 
       <CreateWorkspaceModal
         isOpen={isCreateModalOpen}
