@@ -3,6 +3,8 @@ import { ListModel } from './list.model';
 import { ChecklistModel } from '../../checklists/models/checklist.model';
 import { UserModel } from '../../users/models/user.model';
 import { AttachmentModel } from '../../attachments/models/attachment.model';
+import { CommentModel } from '../../comments/models/comment.model';
+import { LabelModel } from '../../labels/models/label.model';
 
 @ObjectType()
 export class CardModel {
@@ -50,5 +52,11 @@ export class CardModel {
 
   @Field(() => [AttachmentModel], { nullable: true })
   attachments?: AttachmentModel[] | null;
+
+  @Field(() => [CommentModel], { nullable: true })
+  comments?: CommentModel[] | null;
+
+  @Field(() => [LabelModel], { nullable: true })
+  labels?: LabelModel[] | null;
 }
 

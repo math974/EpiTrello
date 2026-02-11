@@ -113,17 +113,49 @@ export class BoardsService {
     // Check if user is a member of the workspace (throws ForbiddenException if not)
     await this.workspacesService.requireWorkspaceAccess(board.workspaceId, userId);
 
-    // Return board with lists and cards
+    // Return board with lists and cards (include assignees on each card)
     return this.prisma.board.findUnique({
       where: { id: boardId },
       include: {
         owner: true,
-        workspace: true,
+        workspace: { include: { labels: true } },
         lists: {
           include: {
             cards: {
               orderBy: {
                 position: 'asc',
+              },
+              include: {
+                assignees: {
+                  include: {
+                    user: {
+                      select: {
+                        id: true,
+                        username: true,
+                        email: true,
+                        avatar: true,
+                        createdAt: true,
+                      },
+                    },
+                  },
+                },
+                comments: {
+                  orderBy: { createdAt: 'asc' },
+                  include: {
+                    author: {
+                      select: {
+                        id: true,
+                        username: true,
+                        email: true,
+                        avatar: true,
+                        createdAt: true,
+                      },
+                    },
+                  },
+                },
+                labels: {
+                  include: { label: true },
+                },
               },
             },
           },
