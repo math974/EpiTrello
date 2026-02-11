@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { PrismaService } from '../prisma/prisma.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { ActivitiesService } from '../activities/activities.service';
+import { AttachmentsService } from '../attachments/attachments.service';
 import { ActivityType } from '../activities/models/activity-type.enum';
 
 @Injectable()
@@ -26,7 +27,8 @@ export class CardsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly workspacesService: WorkspacesService,
-    private readonly activitiesService: ActivitiesService
+    private readonly activitiesService: ActivitiesService,
+    private readonly attachmentsService: AttachmentsService
   ) {}
 
   async createCard(listId: string, title: string, userId: string) {
@@ -338,9 +340,12 @@ export class CardsService {
       userId
     );
 
+    // Delete all attachments from MinIO and DB before deleting the card
+    await this.attachmentsService.deleteAttachmentsForCard(cardId, userId);
+
     // Use a transaction to delete the card and reorganize positions
     await this.prisma.$transaction(async (tx) => {
-      // Delete the card
+      // Delete the card (attachment records already removed above)
       await tx.card.delete({
         where: { id: cardId },
       });

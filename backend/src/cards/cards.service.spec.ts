@@ -1,6 +1,7 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
+import { AttachmentsService } from '../attachments/attachments.service';
 import { CardsService } from './cards.service';
 
 describe('CardsService', () => {
@@ -42,7 +43,15 @@ describe('CardsService', () => {
   const activitiesService = {
     logActivity: jest.fn().mockResolvedValue(undefined),
   } as unknown as any;
-  const service = new CardsService(prisma, workspacesService, activitiesService);
+  const attachmentsService = {
+    deleteAttachmentsForCard: jest.fn().mockResolvedValue(undefined),
+  } as unknown as AttachmentsService;
+  const service = new CardsService(
+    prisma,
+    workspacesService,
+    activitiesService,
+    attachmentsService
+  );
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -964,6 +973,10 @@ describe('CardsService', () => {
         'workspace-1',
         'user-1'
       );
+      expect(attachmentsService.deleteAttachmentsForCard).toHaveBeenCalledWith(
+        'card-1',
+        'user-1'
+      );
       expect(prisma.$transaction).toHaveBeenCalled();
       expect(result).toBe(true);
     });
@@ -1006,6 +1019,10 @@ describe('CardsService', () => {
 
       const result = await service.deleteCard('card-1', 'user-1');
 
+      expect(attachmentsService.deleteAttachmentsForCard).toHaveBeenCalledWith(
+        'card-1',
+        'user-1'
+      );
       expect(prisma.$transaction).toHaveBeenCalled();
       expect(result).toBe(true);
     });

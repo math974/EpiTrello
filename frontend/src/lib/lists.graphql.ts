@@ -16,6 +16,14 @@ export const BOARD_QUERY = gql`
         username
         email
       }
+      workspace {
+        id
+        labels {
+          id
+          name
+          color
+        }
+      }
       lists {
         id
         title
@@ -23,6 +31,69 @@ export const BOARD_QUERY = gql`
         archived
         archivedPosition
         boardId
+        cards {
+          id
+          title
+          description
+          position
+          archived
+          archivedPosition
+          done
+          listId
+          dueDate
+          assignees {
+            id
+            username
+            email
+          }
+          comments {
+            id
+            content
+            authorId
+            createdAt
+            updatedAt
+            author {
+              id
+              username
+              email
+              avatar
+            }
+          }
+          labels {
+            id
+            name
+            color
+          }
+          attachments {
+            id
+            cardId
+            uploaderId
+            fileName
+            mimeType
+            size
+            createdAt
+            uploader {
+              id
+              username
+              email
+            }
+          }
+          checklists {
+            id
+            cardId
+            title
+            position
+            items {
+              id
+              checklistId
+              content
+              checked
+              position
+            }
+            createdAt
+            updatedAt
+          }
+        }
         createdAt
         updatedAt
       }

@@ -65,6 +65,14 @@ export const WORKSPACE_QUERY = gql`
           avatar
         }
       }
+      labels {
+        id
+        name
+        color
+        workspaceId
+        createdAt
+        updatedAt
+      }
       createdAt
       updatedAt
     }
@@ -78,7 +86,7 @@ export const ADD_WORKSPACE_MEMBER_MUTATION = gql`
       workspaceId
       role
       user {
-        id
+      id
         username
         email
         avatar

@@ -405,12 +405,65 @@ describe('BoardsService', () => {
         where: { id: 'board-1' },
         include: {
           owner: true,
-          workspace: true,
+          workspace: { include: { labels: true } },
           lists: {
             include: {
               cards: {
                 orderBy: {
                   position: 'asc',
+                },
+                include: {
+                  assignees: {
+                    include: {
+                      user: {
+                        select: {
+                          id: true,
+                          username: true,
+                          email: true,
+                          avatar: true,
+                          createdAt: true,
+                        },
+                      },
+                    },
+                  },
+                  comments: {
+                    orderBy: { createdAt: 'asc' },
+                    include: {
+                      author: {
+                        select: {
+                          id: true,
+                          username: true,
+                          email: true,
+                          avatar: true,
+                          createdAt: true,
+                        },
+                      },
+                    },
+                  },
+                  labels: {
+                    include: { label: true },
+                  },
+                  attachments: {
+                    include: {
+                      uploader: {
+                        select: {
+                          id: true,
+                          username: true,
+                          email: true,
+                          avatar: true,
+                          createdAt: true,
+                        },
+                      },
+                    },
+                  },
+                  checklists: {
+                    orderBy: { position: 'asc' },
+                    include: {
+                      items: {
+                        orderBy: { position: 'asc' },
+                      },
+                    },
+                  },
                 },
               },
             },

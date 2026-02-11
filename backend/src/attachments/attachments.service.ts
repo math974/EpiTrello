@@ -327,5 +327,135 @@ export class AttachmentsService {
 
     return true;
   }
+
+  /**
+   * Delete all attachments for a card (e.g. when the card is deleted).
+   * Deletes files from MinIO and attachment records. Call this before deleting the card.
+   */
+  async deleteAttachmentsForCard(cardId: string, userId: string): Promise<void> {
+    if (!cardId || cardId.trim() === '') {
+      return;
+    }
+
+    const card = await this.prisma.card.findUnique({
+      where: { id: cardId },
+      include: {
+        list: {
+          include: {
+            board: { include: { workspace: true } },
+          },
+        },
+      },
+    });
+
+    if (!card) {
+      return;
+    }
+
+    await this.workspacesService.requireWorkspaceAccess(
+      card.list.board.workspaceId,
+      userId
+    );
+
+    const attachments = await this.prisma.attachment.findMany({
+      where: { cardId },
+      select: { id: true, objectKey: true },
+    });
+
+    for (const att of attachments) {
+      this.storageService.deleteObject(att.objectKey).catch((error) => {
+        this.deletionRetryService.recordFailedDeletion(att.objectKey, error).catch((retryError) => {
+          console.error(`Failed to record failed deletion for ${att.objectKey}:`, retryError);
+        });
+      });
+    }
+
+    await this.prisma.attachment.deleteMany({
+      where: { cardId },
+    });
+  }
+
+  /**
+   * Update attachment display name (fileName in DB only; object in MinIO is unchanged)
+   */
+  async updateAttachment(attachmentId: string, fileName: string, userId: string) {
+    if (!attachmentId || attachmentId.trim() === '') {
+      throw new NotFoundException('Attachment ID is required');
+    }
+    if (!fileName || fileName.trim() === '') {
+      throw new BadRequestException('File name is required');
+    }
+
+    const attachment = await this.prisma.attachment.findUnique({
+      where: { id: attachmentId },
+      include: {
+        card: {
+          include: {
+            list: {
+              include: {
+                board: { include: { workspace: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!attachment) {
+      throw new NotFoundException('Attachment not found');
+    }
+
+    await this.workspacesService.requireWorkspaceAccess(
+      attachment.card.list.board.workspaceId,
+      userId
+    );
+
+    if (attachment.uploaderId !== userId) {
+      throw new ForbiddenException('Only the uploader can rename the attachment');
+    }
+
+    return this.prisma.attachment.update({
+      where: { id: attachmentId },
+      data: { fileName: fileName.trim() },
+      include: this.attachmentInclude,
+    });
+  }
+
+  /**
+   * Get a presigned download URL for an attachment
+   */
+  async getAttachmentDownloadUrl(attachmentId: string, userId: string): Promise<string> {
+    if (!attachmentId || attachmentId.trim() === '') {
+      throw new NotFoundException('Attachment ID is required');
+    }
+
+    const attachment = await this.prisma.attachment.findUnique({
+      where: { id: attachmentId },
+      include: {
+        card: {
+          include: {
+            list: {
+              include: {
+                board: { include: { workspace: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!attachment) {
+      throw new NotFoundException('Attachment not found');
+    }
+
+    await this.workspacesService.requireWorkspaceAccess(
+      attachment.card.list.board.workspaceId,
+      userId
+    );
+
+    // Presigned URL valid for 1 hour (3600 seconds)
+    const DOWNLOAD_URL_EXPIRES_SEC = 3600;
+    return this.storageService.getDownloadUrl(attachment.objectKey, DOWNLOAD_URL_EXPIRES_SEC);
+  }
 }
 

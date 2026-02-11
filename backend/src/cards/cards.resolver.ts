@@ -1,4 +1,4 @@
-import { Args, Context, Mutation, Resolver } from '@nestjs/graphql';
+import { Args, Context, Mutation, Resolver, ResolveField, Parent } from '@nestjs/graphql';
 import { User } from '@prisma/client';
 import { AuthGuard } from '../common/guards/gql-auth.decorator';
 import { CreateCardInput } from './dto/create-card.input';
@@ -14,11 +14,29 @@ import { AssignUserToCardInput } from './dto/assign-user-to-card.input';
 import { UnassignUserFromCardInput } from './dto/unassign-user-from-card.input';
 import { SetCardAssigneesInput } from './dto/set-card-assignees.input';
 import { CardModel } from '../boards/models/card.model';
+import { UserModel } from '../users/models/user.model';
+import { LabelModel } from '../labels/models/label.model';
 import { CardsService } from './cards.service';
 
 @Resolver(() => CardModel)
 export class CardsResolver {
   constructor(private readonly cardsService: CardsService) {}
+
+  /** Map Prisma CardAssignee[] to UserModel[] for GraphQL (board query returns assignees as { user }[]) */
+  @ResolveField(() => [UserModel], { nullable: true })
+  assignees(@Parent() card: { assignees?: Array<{ user: unknown }> }) {
+    const list = card.assignees;
+    if (!list || !Array.isArray(list)) return [];
+    return list.map((a) => a.user).filter(Boolean);
+  }
+
+  /** Map Prisma CardLabel[] to LabelModel[] for GraphQL */
+  @ResolveField(() => [LabelModel], { nullable: true })
+  labels(@Parent() card: { labels?: Array<{ label: unknown }> }) {
+    const list = card.labels;
+    if (!list || !Array.isArray(list)) return [];
+    return list.map((cl) => cl.label).filter(Boolean);
+  }
 
   @Mutation(() => CardModel)
   @AuthGuard()

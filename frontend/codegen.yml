@@ -13,6 +13,12 @@ documents:
   - 'src/lib/workspaces.graphql.ts'
   - 'src/lib/boards.graphql.ts'
   - 'src/lib/lists.graphql.ts'
+  - 'src/lib/cards.graphql.ts'
+  - 'src/lib/comments.graphql.ts'
+  - 'src/lib/labels.graphql.ts'
+  - 'src/lib/activities.graphql.ts'
+  - 'src/lib/attachments.graphql.ts'
+  - 'src/lib/checklists.graphql.ts'
   # Add other GraphQL files here as needed
   # - 'src/**/*.{ts,tsx}'
 generates:

@@ -161,18 +161,18 @@ export default function WorkspaceSidebar() {
           borderRight: '1px solid #374151',
         }}
       >
-          {/* Header */}
+        {/* Header */}
           <div style={{ borderBottom: '1px solid #374151', padding: '1rem' }}>
             <div className={`flex items-center ${collapsed ? 'justify-center' : 'justify-center'}`}>
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
                 <svg className="w-7 h-7 text-trello-blue" viewBox="0 0 24 24" fill="currentColor">
-                  <rect x="3" y="3" width="7" height="18" rx="1.5" />
-                  <rect x="14" y="3" width="7" height="11" rx="1.5" />
-                </svg>
+                <rect x="3" y="3" width="7" height="18" rx="1.5" />
+                <rect x="14" y="3" width="7" height="11" rx="1.5" />
+              </svg>
                 {!collapsed && <span className="font-bold text-lg text-white">EpiTrello</span>}
-              </div>
             </div>
-          </div>
+            </div>
+        </div>
 
         {/* Workspaces Section */}
         <div className="flex flex-col flex-1 overflow-hidden" style={{ height: 'calc(100vh - 140px)' }}>
@@ -182,7 +182,7 @@ export default function WorkspaceSidebar() {
                 <button
                   onClick={() => setWorkspacesExpanded(!workspacesExpanded)}
                   className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
-                >
+              >
                   <h2 className="text-xs font-semibold uppercase tracking-wider">Workspaces</h2>
                   {workspacesExpanded ? (
                     <FiChevronDown size={16} />
@@ -190,13 +190,13 @@ export default function WorkspaceSidebar() {
                     <FiChevronUp size={16} />
                   )}
                 </button>
-                <button
-                  onClick={() => setIsCreateModalOpen(true)}
+                    <button
+                      onClick={() => setIsCreateModalOpen(true)}
                   className="text-gray-400 hover:text-white transition-colors"
                   aria-label="Create workspace"
-                >
+                    >
                   <FiPlus size={18} />
-                </button>
+                    </button>
               </div>
             ) : (
               <div className="flex justify-center">
@@ -210,37 +210,37 @@ export default function WorkspaceSidebar() {
           <div className="flex-1 overflow-y-auto px-2 py-2">
             {loading ? (
               <div className="space-y-2">
-                {[1, 2, 3].map((i) => (
+              {[1, 2, 3].map((i) => (
                   <div key={i} className={`flex items-center gap-3 rounded-lg py-2 ${collapsed ? 'justify-center' : 'px-3'}`}>
                     <div className="h-8 w-8 shrink-0 animate-pulse rounded-md bg-gray-700" />
                     {!collapsed && <div className="h-4 w-full animate-pulse rounded bg-gray-700" />}
-                  </div>
-                ))}
-              </div>
+                </div>
+              ))}
+            </div>
             ) : error ? (
               <div className={`px-3 py-4 text-center ${collapsed ? 'px-2' : ''}`}>
                 {!collapsed && (
                   <>
                     <p className="mb-2 text-xs text-red-400">{error}</p>
-                    <button
-                      onClick={handleRetry}
+                <button
+                  onClick={handleRetry}
                       className="text-xs text-trello-blue hover:underline font-medium"
-                    >
-                      Retry
+                >
+                  Retry
                     </button>
                   </>
                 )}
                 {collapsed && (
-                  <button
+          <button
                     onClick={handleRetry}
                     className="text-red-400 hover:text-red-300"
                     title="Retry"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </button>
-                )}
+                </svg>
+              </button>
+            )}
               </div>
             ) : workspaces.length === 0 ? (
               <div className={`px-3 py-4 text-center ${collapsed ? 'px-2' : ''}`}>
@@ -256,13 +256,13 @@ export default function WorkspaceSidebar() {
                   </>
                 )}
                 {collapsed && (
-                  <button
-                    onClick={() => setIsCreateModalOpen(true)}
+                <button
+                  onClick={() => setIsCreateModalOpen(true)}
                     className="text-gray-400 hover:text-white"
                     title="Create workspace"
-                  >
+              >
                     <FiPlus size={20} />
-                  </button>
+              </button>
                 )}
               </div>
             ) : (
@@ -289,11 +289,11 @@ export default function WorkspaceSidebar() {
           {!collapsed && (
             <p className="text-xs text-gray-500">v1.0.0</p>
           )}
-        </div>
+            </div>
       </Sidebar>
 
       {/* Collapse Button - Positioned on the edge, half outside */}
-      <button
+                <button
         onClick={() => setCollapsed(!collapsed)}
         className="fixed z-50 w-6 h-12 bg-gray-700 hover:bg-gray-600 border border-gray-600 border-l-0 rounded-r-md flex items-center justify-center text-gray-300 hover:text-white transition-all shadow-lg"
         style={{
@@ -308,7 +308,7 @@ export default function WorkspaceSidebar() {
         ) : (
           <FiChevronsLeft size={16} />
         )}
-      </button>
+                </button>
 
       <CreateWorkspaceModal
         isOpen={isCreateModalOpen}
