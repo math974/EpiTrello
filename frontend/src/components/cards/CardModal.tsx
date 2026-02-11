@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { CardModel } from '../../generated/graphql';
 import { FiX, FiCheck, FiArchive, FiTrash2, FiCalendar } from 'react-icons/fi';
 import AssigneesSection from './AssigneesSection';
 import LabelsSection from './LabelsSection';
 import AttachmentsSection from './AttachmentsSection';
+import ChecklistSection from './ChecklistSection';
 import CommentsSection from './CommentsSection';
 import ConfirmDeleteCardModal from './ConfirmDeleteCardModal';
 import {
@@ -22,8 +23,10 @@ type CardModalProps = {
   card: CardModel | null;
   boardId: string;
   workspaceId: string;
-  onClose: () => void;
-  onUpdate: () => void;
+  /** Called when modal is closed. Can be async (e.g. refetch board so data is fresh when reopening). */
+  onClose: () => void | Promise<void>;
+  /** Refetch board; can be async. Scroll position of the left column is preserved across refetch. */
+  onUpdate: () => void | Promise<void>;
   onAssigneesChange?: (cardId: string, newAssignees: CardModel['assignees']) => void;
 };
 
@@ -47,8 +50,39 @@ export default function CardModal({
   const [currentCardId, setCurrentCardId] = useState<string | null>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const descriptionTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const leftColumnScrollRef = useRef<HTMLDivElement>(null);
   // Use ref to store saved description that won't be overwritten by useEffect
   const savedDescriptionRef = useRef<string>('');
+  const scrollToRestoreRef = useRef<{ left: number; window: number } | null>(null);
+
+  const handleUpdatePreservingScroll = useCallback(async () => {
+    const scrollEl = leftColumnScrollRef.current;
+    scrollToRestoreRef.current = {
+      left: scrollEl?.scrollTop ?? 0,
+      window: typeof window !== 'undefined' ? window.scrollY : 0,
+    };
+    await Promise.resolve(onUpdate());
+  }, [onUpdate]);
+
+  useEffect(() => {
+    const pending = scrollToRestoreRef.current;
+    if (!pending || !card) return;
+    scrollToRestoreRef.current = null;
+    const restore = () => {
+      if (leftColumnScrollRef.current) {
+        leftColumnScrollRef.current.scrollTop = pending.left;
+      }
+      if (typeof window !== 'undefined') {
+        window.scrollTo(window.scrollX, pending.window);
+      }
+    };
+    restore();
+    requestAnimationFrame(() => {
+      restore();
+      setTimeout(restore, 50);
+      setTimeout(restore, 150);
+    });
+  }, [card]);
 
   useEffect(() => {
     if (card) {
@@ -120,7 +154,7 @@ export default function CardModal({
     setIsEditingTitle(false);
     setIsEditingDescription(false);
     savedDescriptionRef.current = ''; // Clear saved description when closing
-    onClose();
+    void Promise.resolve(onClose());
   };
 
   const handleSaveTitle = async () => {
@@ -324,7 +358,7 @@ export default function CardModal({
 
           {/* Content: left = description/assignees/due date, right = comments */}
           <div className="flex-1 overflow-hidden flex p-6 gap-6">
-            <div className="flex-1 min-w-0 overflow-y-auto">
+            <div ref={leftColumnScrollRef} className="flex-1 min-w-0 overflow-y-auto">
               {/* Description */}
               <div className="mb-6">
                 <h3 className="text-sm font-semibold text-gray-700 mb-2">Description</h3>
@@ -401,7 +435,7 @@ export default function CardModal({
                 boardId={boardId}
                 workspaceId={workspaceId}
                 cardLabels={card.labels ?? []}
-                onUpdate={onUpdate}
+                onUpdate={handleUpdatePreservingScroll}
               />
 
               <div className="border-t border-gray-200 my-4" aria-hidden="true" />
@@ -411,7 +445,18 @@ export default function CardModal({
                 cardId={card.id}
                 boardId={boardId}
                 attachments={card.attachments ?? []}
-                onUpdate={onUpdate}
+                onUpdate={handleUpdatePreservingScroll}
+              />
+
+              <div className="border-t border-gray-200 my-4" aria-hidden="true" />
+
+              {/* Checklists */}
+              <ChecklistSection
+                key={card.id}
+                cardId={card.id}
+                boardId={boardId}
+                checklists={card.checklists ?? []}
+                onUpdate={handleUpdatePreservingScroll}
               />
 
               <div className="border-t border-gray-200 my-4" aria-hidden="true" />
