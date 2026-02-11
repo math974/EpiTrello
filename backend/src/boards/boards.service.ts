@@ -169,6 +169,14 @@ export class BoardsService {
                     },
                   },
                 },
+                checklists: {
+                  orderBy: { position: 'asc' },
+                  include: {
+                    items: {
+                      orderBy: { position: 'asc' },
+                    },
+                  },
+                },
               },
             },
           },
