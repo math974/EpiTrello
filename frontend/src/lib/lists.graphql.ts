@@ -78,6 +78,21 @@ export const BOARD_QUERY = gql`
               email
             }
           }
+          checklists {
+            id
+            cardId
+            title
+            position
+            items {
+              id
+              checklistId
+              content
+              checked
+              position
+            }
+            createdAt
+            updatedAt
+          }
         }
         createdAt
         updatedAt

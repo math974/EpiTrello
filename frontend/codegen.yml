@@ -18,6 +18,7 @@ documents:
   - 'src/lib/labels.graphql.ts'
   - 'src/lib/activities.graphql.ts'
   - 'src/lib/attachments.graphql.ts'
+  - 'src/lib/checklists.graphql.ts'
   # Add other GraphQL files here as needed
   # - 'src/**/*.{ts,tsx}'
 generates:
