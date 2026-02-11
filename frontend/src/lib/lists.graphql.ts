@@ -64,6 +64,20 @@ export const BOARD_QUERY = gql`
             name
             color
           }
+          attachments {
+            id
+            cardId
+            uploaderId
+            fileName
+            mimeType
+            size
+            createdAt
+            uploader {
+              id
+              username
+              email
+            }
+          }
         }
         createdAt
         updatedAt

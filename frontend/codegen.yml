@@ -17,6 +17,7 @@ documents:
   - 'src/lib/comments.graphql.ts'
   - 'src/lib/labels.graphql.ts'
   - 'src/lib/activities.graphql.ts'
+  - 'src/lib/attachments.graphql.ts'
   # Add other GraphQL files here as needed
   # - 'src/**/*.{ts,tsx}'
 generates:
