@@ -443,6 +443,19 @@ describe('BoardsService', () => {
                   labels: {
                     include: { label: true },
                   },
+                  attachments: {
+                    include: {
+                      uploader: {
+                        select: {
+                          id: true,
+                          username: true,
+                          email: true,
+                          avatar: true,
+                          createdAt: true,
+                        },
+                      },
+                    },
+                  },
                 },
               },
             },
