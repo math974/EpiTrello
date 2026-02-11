@@ -3,6 +3,7 @@ import { CardModel } from '../../generated/graphql';
 import { FiX, FiCheck, FiArchive, FiTrash2, FiCalendar } from 'react-icons/fi';
 import AssigneesSection from './AssigneesSection';
 import LabelsSection from './LabelsSection';
+import AttachmentsSection from './AttachmentsSection';
 import CommentsSection from './CommentsSection';
 import ConfirmDeleteCardModal from './ConfirmDeleteCardModal';
 import {
@@ -400,6 +401,16 @@ export default function CardModal({
                 boardId={boardId}
                 workspaceId={workspaceId}
                 cardLabels={card.labels ?? []}
+                onUpdate={onUpdate}
+              />
+
+              <div className="border-t border-gray-200 my-4" aria-hidden="true" />
+
+              {/* Attachments */}
+              <AttachmentsSection
+                cardId={card.id}
+                boardId={boardId}
+                attachments={card.attachments ?? []}
                 onUpdate={onUpdate}
               />
 
