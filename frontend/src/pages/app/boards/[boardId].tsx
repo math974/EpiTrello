@@ -262,6 +262,7 @@ export default function BoardPage() {
         workspaceId={board.workspaceId}
         onAssigneesChange={handleAssigneesChange}
         onClose={async () => {
+          // Refetch board when leaving modal so checklists/items added locally are persisted in view
           await fetchBoard();
           setIsCardModalOpen(false);
           setSelectedCard(null);
