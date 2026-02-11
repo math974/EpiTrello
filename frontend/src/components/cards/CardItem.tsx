@@ -1,7 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { CardModel } from '../../generated/graphql';
-import { FiCheck, FiClock, FiMessageSquare, FiAlignLeft } from 'react-icons/fi';
+import { FiCheck, FiCheckSquare, FiClock, FiMessageSquare, FiAlignLeft, FiPaperclip } from 'react-icons/fi';
 
 type CardItemProps = {
   card: CardModel;
@@ -40,7 +40,18 @@ export default function CardItem({ card, listId, index = 0, onClick, onToggleDon
       })
     : null;
   const commentCount = card.comments?.length ?? 0;
+  const attachmentCount = card.attachments?.length ?? 0;
   const hasDescription = Boolean(card.description?.trim());
+  const checklistStats = (card.checklists ?? []).reduce(
+    (acc, cl) => {
+      const items = cl.items ?? [];
+      acc.total += items.length;
+      acc.checked += items.filter((i) => i.checked).length;
+      return acc;
+    },
+    { total: 0, checked: 0 }
+  );
+  const hasChecklistItems = checklistStats.total > 0;
 
   return (
     <div
@@ -94,6 +105,15 @@ export default function CardItem({ card, listId, index = 0, onClick, onToggleDon
             </div>
           )}
           <div className="flex flex-wrap items-center gap-2 mt-2">
+            {hasChecklistItems && (
+              <div
+                className="flex items-center gap-1 text-xs text-gray-600 bg-gray-100 rounded px-1.5 py-0.5"
+                title={`Checklist: ${checklistStats.checked}/${checklistStats.total} items`}
+              >
+                <FiCheckSquare size={12} className="shrink-0 text-gray-500" />
+                <span>{checklistStats.checked}/{checklistStats.total}</span>
+              </div>
+            )}
             {dueDateStr && (
               <div
                 className="flex items-center gap-1 text-xs text-gray-600 bg-gray-100 rounded px-1.5 py-0.5"
@@ -110,6 +130,15 @@ export default function CardItem({ card, listId, index = 0, onClick, onToggleDon
               >
                 <FiMessageSquare size={12} className="shrink-0 text-gray-500" />
                 <span>{commentCount}</span>
+              </div>
+            )}
+            {attachmentCount > 0 && (
+              <div
+                className="flex items-center gap-1 text-xs text-gray-600 bg-gray-100 rounded px-1.5 py-0.5"
+                title={`${attachmentCount} attachment${attachmentCount !== 1 ? 's' : ''}`}
+              >
+                <FiPaperclip size={12} className="shrink-0 text-gray-500" />
+                <span>{attachmentCount}</span>
               </div>
             )}
             {hasDescription && (
