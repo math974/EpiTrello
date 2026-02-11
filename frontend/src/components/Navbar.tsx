@@ -1,98 +1,23 @@
-import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
 import { useAuth } from '@/components/auth/AuthProvider';
 import LogoutConfirmModal from '@/components/auth/LogoutConfirmModal';
+import ActivityModal from '@/components/activity/ActivityModal';
 
 export default function Navbar() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showActivityModal, setShowActivityModal] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { user, logout } = useAuth();
 
   return (
-    <nav className="bg-gradient-to-r from-trello-blue-darker via-trello-blue-dark to-trello-blue h-12 flex items-center justify-between px-4 shadow-md">
-      <div className="flex items-center gap-2">
-        <div className="hidden md:flex items-center gap-1">
-          <NavButton>Espaces de travail</NavButton>
-          <NavButton>Récent</NavButton>
-          <NavButton>Favoris</NavButton>
-        </div>
-
-        <div className="relative">
-          <button
-            onClick={() => setShowCreateMenu(!showCreateMenu)}
-            className="ml-2 bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors"
-          >
-            Créer
-          </button>
-          {showCreateMenu && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setShowCreateMenu(false)} />
-              <div className="absolute left-0 top-full z-20 mt-2 w-80 rounded-lg border border-gray-200 bg-white p-4 shadow-xl">
-                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-trello-gray">Creer un tableau</p>
-                <div className="mt-4 space-y-4 text-sm">
-                  <div>
-                    <label className="text-xs font-semibold text-trello-navy">Titre du tableau</label>
-                    <input
-                      type="text"
-                      placeholder="Ex: Roadmap marketing"
-                      className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-trello-blue focus:ring-2 focus:ring-trello-blue/40"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-trello-navy">Espace de travail</label>
-                    <select className="mt-2 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-trello-blue focus:ring-2 focus:ring-trello-blue/40">
-                      <option>Epitech</option>
-                      <option>Side project</option>
-                      <option>Clients</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-trello-navy">Visibilite</label>
-                    <div className="mt-2 space-y-2 text-xs text-trello-gray">
-                      <label className="flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2">
-                        <input type="radio" name="visibility" defaultChecked />
-                        <span>Prive (membres du tableau)</span>
-                      </label>
-                      <label className="flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2">
-                        <input type="radio" name="visibility" />
-                        <span>Espace de travail</span>
-                      </label>
-                      <label className="flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2">
-                        <input type="radio" name="visibility" />
-                        <span>Public</span>
-                      </label>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-trello-gray hover:bg-gray-50"
-                      onClick={() => setShowCreateMenu(false)}
-                    >
-                      Annuler
-                    </button>
-                    <button
-                      type="button"
-                      className="w-full rounded-md bg-trello-blue px-3 py-2 text-sm font-semibold text-white hover:bg-trello-blue-dark"
-                    >
-                      Creer
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
+    <nav className="bg-gradient-to-r from-trello-blue-darker via-trello-blue-dark to-trello-blue h-12 flex items-center justify-end px-4 shadow-md">
       <div className="flex items-center gap-3">
         <div className="hidden sm:flex items-center">
           <div className="relative">
             <input
               type="text"
-              placeholder="Rechercher"
+              placeholder="Search"
               className="bg-white/20 text-white placeholder-white/70 px-3 py-1.5 pl-8 rounded text-sm w-48 focus:w-64 focus:bg-white focus:text-trello-navy focus:placeholder-trello-gray transition-all outline-none"
             />
             <svg className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -139,7 +64,16 @@ export default function Navbar() {
                 </div>
                 <div className="py-1">
                   <a href='/u/utilisateur/account#profile'><MenuLink>Profil et visibilité</MenuLink></a>
-                  <a href='/u/utilisateur/account#activity'><MenuLink>Activité</MenuLink></a>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      setShowActivityModal(true);
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-trello-navy hover:bg-gray-100 transition-colors"
+                  >
+                    Activité
+                  </button>
                   <a href='/u/utilisateur/account#settings'><MenuLink>Cartes</MenuLink></a>
                   <a href='/u/utilisateur/account#settings'><MenuLink>Paramètres</MenuLink></a>
                 </div>
@@ -160,6 +94,10 @@ export default function Navbar() {
         </div>
       </div>
 
+      <ActivityModal
+        isOpen={showActivityModal}
+        onClose={() => setShowActivityModal(false)}
+      />
       <LogoutConfirmModal
         isOpen={showLogoutModal}
         onClose={() => setShowLogoutModal(false)}
@@ -183,17 +121,6 @@ export default function Navbar() {
 type ButtonProps = {
   children: ReactNode;
 };
-
-function NavButton({ children }: ButtonProps) {
-  return (
-    <button className="text-white/90 hover:text-white hover:bg-white/20 px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-1">
-      {children}
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-      </svg>
-    </button>
-  );
-}
 
 function MenuLink({ children }: ButtonProps) {
   return (
