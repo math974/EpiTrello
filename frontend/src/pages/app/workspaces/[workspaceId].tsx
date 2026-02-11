@@ -4,12 +4,13 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { getWorkspace, WorkspaceModel, leaveWorkspace, myWorkspaces } from '@/lib/workspacesClient';
 import { workspaceBoards, createBoard, updateBoard, deleteBoard, BoardModel } from '@/lib/boardsClient';
 import ManageWorkspaceMembersModal from '@/components/workspaces/ManageWorkspaceMembersModal';
+import ManageWorkspaceLabelsModal from '@/components/workspaces/ManageWorkspaceLabelsModal';
 import LeaveWorkspaceConfirmModal from '@/components/workspaces/LeaveWorkspaceConfirmModal';
 import BoardGrid from '@/components/boards/BoardGrid';
 import CreateBoardModal from '@/components/boards/CreateBoardModal';
 import EditBoardModal from '@/components/boards/EditBoardModal';
 import DeleteBoardConfirmModal from '@/components/boards/DeleteBoardConfirmModal';
-import { FiUsers, FiPlus, FiLogOut } from 'react-icons/fi';
+import { FiUsers, FiPlus, FiLogOut, FiTag } from 'react-icons/fi';
 
 // Disable static generation for this page (requires authentication)
 export const getServerSideProps = async () => {
@@ -38,6 +39,7 @@ export default function WorkspacePage() {
   const [isDeletingBoard, setIsDeletingBoard] = useState(false);
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [isLabelsModalOpen, setIsLabelsModalOpen] = useState(false);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -216,7 +218,7 @@ export default function WorkspacePage() {
 
   return (
     <>
-      <div className="p-6">
+    <div className="p-6">
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="mb-2 text-2xl font-semibold text-trello-navy">{workspace.name}</h1>
@@ -226,13 +228,22 @@ export default function WorkspacePage() {
           </div>
           <div className="flex items-center gap-2">
             {canManageMembers && (
-              <button
-                onClick={() => setIsMembersModalOpen(true)}
-                className="flex items-center gap-2 rounded-md bg-trello-blue px-4 py-2 text-sm font-semibold text-white hover:bg-trello-blue-dark transition-colors"
-              >
-                <FiUsers size={18} />
-                Manage Members
-              </button>
+              <>
+                <button
+                  onClick={() => setIsLabelsModalOpen(true)}
+                  className="flex items-center gap-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  <FiTag size={18} />
+                  Labels
+                </button>
+                <button
+                  onClick={() => setIsMembersModalOpen(true)}
+                  className="flex items-center gap-2 rounded-md bg-trello-blue px-4 py-2 text-sm font-semibold text-white hover:bg-trello-blue-dark transition-colors"
+                >
+                  <FiUsers size={18} />
+                  Manage Members
+                </button>
+              </>
             )}
             {isMember && !isOwner && (
               <button
@@ -243,7 +254,7 @@ export default function WorkspacePage() {
                 Leave Workspace
               </button>
             )}
-          </div>
+    </div>
         </div>
 
         {/* Boards Section */}
@@ -257,7 +268,7 @@ export default function WorkspacePage() {
               <FiPlus size={18} />
               Create board
             </button>
-          </div>
+      </div>
 
           {boardsLoading ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
@@ -274,7 +285,7 @@ export default function WorkspacePage() {
               >
                 Retry
               </button>
-            </div>
+    </div>
           ) : (
             <BoardGrid
               boards={boards}
@@ -289,6 +300,12 @@ export default function WorkspacePage() {
 
       {workspace && (
         <>
+          <ManageWorkspaceLabelsModal
+            isOpen={isLabelsModalOpen}
+            onClose={() => setIsLabelsModalOpen(false)}
+            workspace={workspace}
+            onWorkspaceUpdate={(updated) => setWorkspace(updated)}
+          />
           <ManageWorkspaceMembersModal
             isOpen={isMembersModalOpen}
             onClose={() => setIsMembersModalOpen(false)}
