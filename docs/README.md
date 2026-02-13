@@ -2,6 +2,10 @@
 
 This section contains the technical and functional documentation for the EpiTrello project.
 
+## Additional Documents
+
+- [Cahier des charges](./cahier-des-charges.md)
+
 ## Table of Contents
 
 1. [Architecture](#architecture)
