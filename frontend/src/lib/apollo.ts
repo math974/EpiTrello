@@ -1,4 +1,4 @@
-import { ApolloClient, InMemoryCache, HttpLink, from } from '@apollo/client';
+import { ApolloClient, InMemoryCache, HttpLink, from, ApolloError } from '@apollo/client';
 import { setContext } from '@apollo/client/link/context';
 import { Observable } from '@apollo/client/utilities';
 import { print } from 'graphql';
@@ -129,7 +129,15 @@ if (isBrowser && onError && typeof onError === 'function') {
         path: e.path
       })));
       
-      // Check for UNAUTHENTICATED or Unauthorized errors
+      // Do not try to refresh token on Login/Register — propagate error so form can show "Invalid credentials"
+      const opName = operation?.operationName || '';
+      if (opName === 'Login' || opName === 'Register') {
+        return new Observable((observer) => {
+          observer.error(new ApolloError({ graphQLErrors, networkError }));
+        });
+      }
+      
+      // Check for UNAUTHENTICATED or Unauthorized errors (e.g. expired access token)
       const isUnauthenticated = graphQLErrors.some(
         (err: any) => 
           err.extensions?.code === 'UNAUTHENTICATED' ||

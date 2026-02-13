@@ -9,7 +9,10 @@ import '../styles/globals.css';
 
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
-  const isAppRoute = router.pathname.startsWith('/app') || router.pathname === '/boards';
+  const isAppRoute =
+    router.pathname.startsWith('/app') ||
+    router.pathname === '/boards' ||
+    router.pathname.startsWith('/u/');
 
   return (
     <ApolloProvider client={apolloClient}>

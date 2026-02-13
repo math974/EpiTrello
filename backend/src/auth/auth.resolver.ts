@@ -5,6 +5,7 @@ import { AuthService } from './auth.service';
 import { LoginInput } from './dto/login.input';
 import { RefreshTokenInput } from './dto/refresh-token.input';
 import { RegisterInput } from './dto/register.input';
+import { UpdateUserInput } from './dto/update-user.input';
 import { AuthPayload } from './models/auth-payload.model';
 import { UserModel } from '../users/models/user.model';
 import { AuthGuard } from '../common/guards/gql-auth.decorator';
@@ -64,5 +65,24 @@ export class AuthResolver {
   @AuthGuard()
   meStrict(@Context('user') user: UserModel) {
     return user;
+  }
+
+  @Mutation(() => UserModel)
+  @AuthGuard()
+  updateUser(
+    @Args('input', { type: () => UpdateUserInput }) input: UpdateUserInput,
+    @Context('user') user: UserModel,
+  ) {
+    return this.authService.updateUser(user.id, input);
+  }
+
+  @Mutation(() => Boolean)
+  @AuthGuard()
+  deleteAccount(
+    @Context('user') user: UserModel,
+    @Context('req') req: Request,
+    @Context('res') res: Response,
+  ) {
+    return this.authService.deleteAccount(user.id, req, res);
   }
 }

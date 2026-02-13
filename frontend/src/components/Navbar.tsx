@@ -63,7 +63,7 @@ export default function Navbar() {
                   </div>
                 </div>
                 <div className="py-1">
-                  <a href='/u/utilisateur/account#profile'><MenuLink>Profil et visibilité</MenuLink></a>
+                  <a href={`/u/${user?.username ?? 'utilisateur'}/account#profile`}><MenuLink>Profile and visibility</MenuLink></a>
                   <button
                     type="button"
                     onClick={() => {
@@ -72,7 +72,7 @@ export default function Navbar() {
                     }}
                     className="w-full text-left px-4 py-2 text-sm text-trello-navy hover:bg-gray-100 transition-colors"
                   >
-                    Activité
+                    Activity
                   </button>
                   <a href='/u/utilisateur/account#settings'><MenuLink>Cartes</MenuLink></a>
                   <a href='/u/utilisateur/account#settings'><MenuLink>Paramètres</MenuLink></a>

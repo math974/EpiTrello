@@ -253,7 +253,12 @@ export default function ListsRow({
     setOverListId(null);
 
     if (!over) {
-      if (wasDraggingList) setActiveListId(null);
+      if (wasDraggingList) {
+        // No valid drop target for list: just clear visual state, don't try to compute indices
+        setActiveListId(null);
+        setDropIndicatorIndex(null);
+        return;
+      }
       if (wasDraggingCard && !lastCardDropRef.current) {
         lastCardDropRef.current = null;
         dragSourceRef.current = null;
