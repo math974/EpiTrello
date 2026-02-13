@@ -12,6 +12,7 @@ import {
   UserModel,
   AuthPayload,
 } from '../generated/graphql';
+import { UPDATE_USER_MUTATION, DELETE_ACCOUNT_MUTATION } from './auth.graphql';
 
 /**
  * Authenticate a user with email and password
@@ -132,6 +133,27 @@ export async function logout(): Promise<boolean> {
     clearAccessToken();
     throw error;
   }
+}
+
+export async function updateUser(input: { username?: string; email?: string; avatar?: string | null }): Promise<UserModel> {
+  const payload = Object.fromEntries(
+    Object.entries(input).filter(([, v]) => v !== undefined)
+  ) as { username?: string; email?: string; avatar?: string | null };
+  const { data } = await apolloClient.mutate<{ updateUser: UserModel }>({
+    mutation: UPDATE_USER_MUTATION,
+    variables: { input: payload },
+  });
+  if (!data?.updateUser) throw new Error('Update profile failed');
+  return data.updateUser;
+}
+
+export async function deleteAccount(): Promise<boolean> {
+  const { data } = await apolloClient.mutate<{ deleteAccount: boolean }>({
+    mutation: DELETE_ACCOUNT_MUTATION,
+    context: { credentials: 'include' },
+  });
+  clearAccessToken();
+  return data?.deleteAccount ?? false;
 }
 
 // Re-export types for convenience

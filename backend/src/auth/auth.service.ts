@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { LoginInput } from './dto/login.input';
 import { RegisterInput } from './dto/register.input';
 import { RefreshTokenInput } from './dto/refresh-token.input';
+import { UpdateUserInput } from './dto/update-user.input';
 
 @Injectable()
 export class AuthService {
@@ -223,4 +224,41 @@ export class AuthService {
       path: '/',
     });
   };
+
+  async updateUser(userId: string, input: UpdateUserInput) {
+    const data: { username?: string; email?: string; avatar?: string | null } = {};
+    if (input.username !== undefined) data.username = input.username.trim();
+    if (input.email !== undefined) {
+      const email = input.email.toLowerCase().trim();
+      const existing = await this.prisma.user.findFirst({
+        where: { email, NOT: { id: userId } },
+      });
+      if (existing) throw new BadRequestException('Email already in use');
+      data.email = email;
+    }
+    if (input.avatar !== undefined) data.avatar = input.avatar || null;
+    if (Object.keys(data).length === 0) {
+      return this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    }
+    if (data.username !== undefined) {
+      const existing = await this.prisma.user.findFirst({
+        where: { username: data.username, NOT: { id: userId } },
+      });
+      if (existing) throw new BadRequestException('Username already in use');
+    }
+    return this.prisma.user.update({
+      where: { id: userId },
+      data,
+    });
+  }
+
+  async deleteAccount(userId: string, req?: Request, res?: Response) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { refreshTokenHash: null },
+    });
+    if (res) this.clearRefreshTokenCookie(res);
+    await this.prisma.user.delete({ where: { id: userId } });
+    return true;
+  }
 }

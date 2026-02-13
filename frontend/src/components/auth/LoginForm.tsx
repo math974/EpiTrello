@@ -27,16 +27,16 @@ export default function LoginForm({ errorState: initialErrorState = 'none', oaut
 
   const errorBanner =
     errorState === 'network'
-      ? 'Reseau indisponible. Verifiez votre connexion et reessayez.'
+      ? 'Network unavailable. Check your connection and try again.'
       : errorState === 'invalid'
-        ? 'Identifiants invalides. Verifiez votre email et mot de passe.'
+        ? 'Invalid email or password. Please try again.'
         : errorState === 'oauth'
-          ? 'Erreur lors de la connexion OAuth. Veuillez reessayer.'
+          ? 'OAuth sign-in failed. Please try again.'
           : null;
   const fieldErrors = errorState === 'invalid'
     ? {
-        email: 'Email invalide',
-        password: 'Mot de passe invalide',
+        email: 'Invalid email',
+        password: 'Invalid password',
       }
     : {};
 
@@ -66,18 +66,30 @@ export default function LoginForm({ errorState: initialErrorState = 'none', oaut
             await router.push('/boards');
           } catch (error: any) {
             setIsLoading(false);
-            // Handle different error types
-            if (error?.graphQLErrors && Array.isArray(error.graphQLErrors) && error.graphQLErrors.length > 0) {
-              const gqlError = error.graphQLErrors[0];
-              if (gqlError?.extensions?.code === 'UNAUTHORIZED' || gqlError?.extensions?.code === 'BAD_REQUEST') {
-                setErrorState('invalid');
-              } else {
-                setErrorState('network');
-              }
-            } else if (error?.networkError) {
+            // Apollo puts 4xx/5xx response body in networkError.result.errors; graphQLErrors can be empty
+            const gqlErrors =
+              error?.networkError?.result?.errors ?? error?.graphQLErrors ?? [];
+            const first = gqlErrors[0];
+            const msg = (first?.message ?? error?.message ?? '').toLowerCase();
+            const code = first?.extensions?.code ?? error?.extensions?.code;
+            const statusCode =
+              first?.extensions?.originalError?.statusCode ??
+              first?.extensions?.status ??
+              first?.extensions?.statusCode ??
+              error?.networkError?.statusCode ??
+              error?.statusCode;
+            const isInvalidCredentials =
+              code === 'UNAUTHORIZED' ||
+              code === 'UNAUTHENTICATED' ||
+              code === 'BAD_REQUEST' ||
+              statusCode === 401 ||
+              msg.includes('invalid credentials') ||
+              msg.includes('unauthorized');
+            if (isInvalidCredentials) {
+              setErrorState('invalid');
+            } else if (error?.networkError && gqlErrors.length === 0) {
               setErrorState('network');
             } else {
-              // Log error for debugging
               console.error('Login error:', error);
               setErrorState('network');
             }
@@ -88,7 +100,7 @@ export default function LoginForm({ errorState: initialErrorState = 'none', oaut
           <label className="block text-sm font-medium text-white/80">Email</label>
           <Input
             type="email"
-            placeholder="vous@exemple.com"
+            placeholder="you@example.com"
             value={formData.email}
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             required
@@ -100,7 +112,7 @@ export default function LoginForm({ errorState: initialErrorState = 'none', oaut
           {fieldErrors.email && <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>}
         </div>
         <div>
-          <label className="block text-sm font-medium text-white/80">Mot de passe</label>
+          <label className="block text-sm font-medium text-white/80">Password</label>
           <Input
             type="password"
             placeholder="••••••••"
@@ -119,26 +131,26 @@ export default function LoginForm({ errorState: initialErrorState = 'none', oaut
           disabled={isLoading}
           className="w-full bg-gradient-to-r from-sky-300 to-emerald-300 text-slate-950 shadow-lg shadow-emerald-500/30 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isLoading ? 'Connexion en cours...' : 'Se connecter'}
+          {isLoading ? 'Signing in...' : 'Sign in'}
         </Button>
       </form>
 
       <div className="relative">
         <Separator />
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="bg-slate-950 px-2 text-xs uppercase text-white/50">Ou</span>
+          <span className="bg-slate-950 px-2 text-xs uppercase text-white/50">Or</span>
         </div>
       </div>
 
       <OAuthButtons loadingProvider={oauthLoadingProvider} />
       <p className="text-center text-xs text-white/50">
-        Si votre compte OAuth existe deja, vous serez connecte automatiquement.
+        If your OAuth account already exists, you will be signed in automatically.
       </p>
 
       <div className="text-center text-sm text-white/60">
-        Pas encore de compte ?{' '}
+        Don&apos;t have an account?{' '}
         <Link href="/signup" className="text-sky-300 hover:underline">
-          Créer un compte
+          Create an account
         </Link>
       </div>
     </div>
